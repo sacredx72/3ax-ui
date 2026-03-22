@@ -452,7 +452,7 @@
       },
       async toggleServer(enable) {
         this.toggling = true;
-        const msg = await HttpUtil.post('panel/api/awg/server/toggle', { enable });
+        const msg = await HttpUtil.postJson('panel/api/awg/server/toggle', { enable });
         this.toggling = false;
         if (msg.success) {
           this.server.enable = enable;
