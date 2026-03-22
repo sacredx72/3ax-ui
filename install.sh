@@ -1376,7 +1376,7 @@ check_secure_boot() {
 if check_secure_boot; then
     echo -e ""
     echo -e "┌───────────────────────────────────────────────────────┐"
-    echo -e "│  ${red}⚠  WARNING: Secure Boot is ENABLED${plain}                  │"
+    echo -e "│  ${red}[!] WARNING: Secure Boot is ENABLED${plain}                  │"
     echo -e "├───────────────────────────────────────────────────────┤"
     echo -e "│  AmneziaWG kernel module cannot be loaded while       │"
     echo -e "│  Secure Boot is active. AWG tunnels will NOT work.    │"
