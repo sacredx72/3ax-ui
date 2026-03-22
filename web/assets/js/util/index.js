@@ -60,7 +60,6 @@ class HttpUtil {
     static async postJson(url, data, options = {}) {
         return this.post(url, data, {
             headers: { 'Content-Type': 'application/json' },
-            transformRequest: [(d) => JSON.stringify(d)],
             ...options,
         });
     }
