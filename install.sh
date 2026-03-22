@@ -804,12 +804,33 @@ install_amneziawg() {
                 echo -e "${green}AmneziaWG installed successfully.${plain}" || \
                 echo -e "${yellow}AmneziaVPN PPA not available, trying DKMS build...${plain}"
             fi
-            # Fallback: try wireguard-dkms approach with amneziawg source
+            # Fallback: build amneziawg-tools from source
             if ! command -v awg &>/dev/null; then
-                apt-get install -y -q linux-headers-$(uname -r) dkms wireguard-tools 2>/dev/null || true
-                if apt-cache show amneziawg-dkms &>/dev/null 2>&1; then
-                    apt-get install -y -q amneziawg-dkms amneziawg-tools
+                echo -e "${yellow}Building amneziawg-tools from source...${plain}"
+                apt-get install -y -q linux-headers-$(uname -r) dkms build-essential git 2>/dev/null || true
+                local tmp_dir
+                tmp_dir=$(mktemp -d)
+                git clone --depth=1 https://github.com/amnezia-vpn/amneziawg-linux-kernel-module.git "$tmp_dir/amneziawg" 2>/dev/null
+                if [[ -d "$tmp_dir/amneziawg" ]]; then
+                    cd "$tmp_dir/amneziawg"
+                    # Build and install the DKMS module
+                    make -C src dkms-install 2>/dev/null || true
+                    # Build userspace tools
+                    if [[ -d src/tools ]]; then
+                        make -C src/tools 2>/dev/null && \
+                        cp src/tools/awg /usr/local/bin/awg && \
+                        chmod +x /usr/local/bin/awg && \
+                        echo -e "${green}awg binary installed.${plain}"
+                    fi
+                    # Install awg-quick
+                    if [[ -f src/tools/awg-quick ]]; then
+                        cp src/tools/awg-quick /usr/local/bin/awg-quick && \
+                        chmod +x /usr/local/bin/awg-quick && \
+                        echo -e "${green}awg-quick installed.${plain}"
+                    fi
+                    cd - &>/dev/null
                 fi
+                rm -rf "$tmp_dir"
             fi
         else
             echo -e "${green}AmneziaWG (awg) already installed.${plain}"
@@ -1068,10 +1089,10 @@ install_x-ui() {
     
     # Download resources
     if [ $# == 0 ]; then
-        tag_version=$(curl -Ls "https://api.github.com/repos/coinman-dev/3x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        tag_version=$(curl -Ls "https://api.github.com/repos/coinman-dev/3x-ui/releases" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' | head -1)
         if [[ ! -n "$tag_version" ]]; then
             echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
-            tag_version=$(curl -4 -Ls "https://api.github.com/repos/coinman-dev/3x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+            tag_version=$(curl -4 -Ls "https://api.github.com/repos/coinman-dev/3x-ui/releases" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' | head -1)
             if [[ ! -n "$tag_version" ]]; then
                 echo -e "${red}Failed to fetch x-ui version, it may be due to GitHub API restrictions, please try it later${plain}"
                 exit 1
