@@ -757,10 +757,53 @@
         await this.getLastOnlineMap();
         await this.getOnlineUsers();
 
+        // Enrich amneziawg inbounds with AWG client data
+        await this.enrichAwgInbounds(msg.obj);
+
         this.setInbounds(msg.obj);
         setTimeout(() => {
           this.refreshing = false;
         }, 500);
+      },
+      async enrichAwgInbounds(inbounds) {
+        for (const inbound of inbounds) {
+          if (inbound.protocol !== Protocols.AMNEZIAWG) continue;
+          try {
+            const awgMsg = await HttpUtil.get('/panel/api/awg/clients');
+            if (awgMsg.success && awgMsg.obj) {
+              // Map AWG clients to standard client format for settings
+              const clients = awgMsg.obj.map(c => ({
+                id: c.email,
+                email: c.email,
+                enable: c.enable,
+                comment: c.comment || c.name || '',
+                totalGB: c.totalGB || 0,
+                expiryTime: c.expiryTime || 0,
+                reset: 0,
+                subId: '',
+                tgId: 0,
+                limitIp: 0,
+                _awgId: c.id,
+                created_at: c.createdAt || 0,
+                updated_at: c.updatedAt || 0,
+              }));
+              inbound.settings = JSON.stringify({ clients });
+              // Map AWG client traffic to clientStats format
+              inbound.clientStats = awgMsg.obj.map(c => ({
+                id: c.id,
+                inboundId: inbound.id,
+                enable: c.enable,
+                email: c.email,
+                up: c.upload || 0,
+                down: c.download || 0,
+                total: (c.totalGB || 0) * 1073741824,
+                expiryTime: c.expiryTime || 0,
+              }));
+            }
+          } catch (e) {
+            console.error('Failed to fetch AWG clients:', e);
+          }
+        }
       },
       async getOnlineUsers() {
         const msg = await HttpUtil.post('/panel/api/inbounds/onlines');
@@ -807,7 +850,7 @@
           to_inbound = dbInbound.toInbound()
           this.inbounds.push(to_inbound);
           this.dbInbounds.push(dbInbound);
-          if ([Protocols.VMESS, Protocols.VLESS, Protocols.TROJAN, Protocols.SHADOWSOCKS].includes(inbound.protocol)) {
+          if ([Protocols.VMESS, Protocols.VLESS, Protocols.TROJAN, Protocols.SHADOWSOCKS, Protocols.AMNEZIAWG].includes(inbound.protocol)) {
             if (dbInbound.isSS && (!to_inbound.isSSMultiUser)) {
               continue;
             }
@@ -1158,6 +1201,12 @@
         }
       },
       async addClient(clients, dbInboundId, modal) {
+        // Check if this is an amneziawg inbound
+        const dbInbound = this.dbInbounds.find(row => row.id === dbInboundId);
+        if (dbInbound && dbInbound.isAmneziawg) {
+          await this.addAwgClient(clients, modal);
+          return;
+        }
         const data = {
           id: dbInboundId,
           settings: '{"clients": [' + clients.toString() + ']}',
@@ -1165,11 +1214,60 @@
         await this.submit(`/panel/api/inbounds/addClient`, data, modal);
       },
       async updateClient(client, dbInboundId, clientId) {
+        // Check if this is an amneziawg inbound
+        const dbInbound = this.dbInbounds.find(row => row.id === dbInboundId);
+        if (dbInbound && dbInbound.isAmneziawg) {
+          await this.updateAwgClient(client, clientId);
+          return;
+        }
         const data = {
           id: dbInboundId,
           settings: '{"clients": [' + client.toString() + ']}',
         };
         await this.submit(`/panel/api/inbounds/updateClient/${clientId}`, data, clientModal);
+      },
+      async addAwgClient(clients, modal) {
+        modal.loading();
+        const client = clients;
+        const data = {
+          email: client.email,
+          name: client.comment || client.email,
+          comment: client.comment || '',
+          enable: client.enable,
+          totalGB: client._totalGB || 0,
+          expiryTime: client.expiryTime || 0,
+        };
+        const msg = await HttpUtil.postJson('/panel/api/awg/client/add', data);
+        if (msg.success) {
+          modal.close();
+          await this.getDBInbounds();
+        } else {
+          modal.loading(false);
+        }
+      },
+      async updateAwgClient(client, clientEmail) {
+        clientModal.loading();
+        // Find AWG client ID by email from the AWG API
+        const clientsMsg = await HttpUtil.get('/panel/api/awg/clients');
+        if (!clientsMsg.success) { clientModal.loading(false); return; }
+        const awgClient = clientsMsg.obj.find(c => c.email === clientEmail);
+        if (!awgClient) { clientModal.loading(false); return; }
+        const data = {
+          ...awgClient,
+          email: client.email,
+          name: client.comment || client.email,
+          comment: client.comment || '',
+          enable: client.enable,
+          totalGB: client._totalGB || 0,
+          expiryTime: client.expiryTime || 0,
+        };
+        const msg = await HttpUtil.postJson(`/panel/api/awg/client/update/${awgClient.id}`, data);
+        if (msg.success) {
+          clientModal.close();
+          await this.getDBInbounds();
+        } else {
+          clientModal.loading(false);
+        }
       },
       resetTraffic(dbInboundId) {
         dbInbound = this.dbInbounds.find(row => row.id === dbInboundId);
@@ -1200,6 +1298,20 @@
       delClient(dbInboundId, client, confirmation = true) {
         dbInbound = this.dbInbounds.find(row => row.id === dbInboundId);
         clientId = this.getClientId(dbInbound.protocol, client);
+        const isAwg = dbInbound && dbInbound.isAmneziawg;
+        const doDelete = async () => {
+          if (isAwg) {
+            // Find AWG client ID by email
+            const clientsMsg = await HttpUtil.get('/panel/api/awg/clients');
+            if (!clientsMsg.success) return;
+            const awgClient = clientsMsg.obj.find(c => c.email === client.email);
+            if (!awgClient) return;
+            const msg = await HttpUtil.postJson(`/panel/api/awg/client/del/${awgClient.id}`, {});
+            if (msg.success) await this.getDBInbounds();
+          } else {
+            this.submit(`/panel/api/inbounds/${dbInboundId}/delClient/${clientId}`);
+          }
+        };
         if (confirmation) {
           this.$confirm({
             title: '{{ i18n "pages.inbounds.deleteClient"}}' + ' ' + client.email,
@@ -1207,10 +1319,10 @@
             class: themeSwitcher.currentTheme,
             okText: '{{ i18n "delete"}}',
             cancelText: '{{ i18n "cancel"}}',
-            onOk: () => this.submit(`/panel/api/inbounds/${dbInboundId}/delClient/${clientId}`),
+            onOk: doDelete,
           });
         } else {
-          this.submit(`/panel/api/inbounds/${dbInboundId}/delClient/${clientId}`);
+          doDelete();
         }
       },
       getSubGroupClients(dbInbounds, currentClient) {
@@ -1598,9 +1710,9 @@
         window.wsClient.connect();
         
         // Listen for inbounds updates
-        window.wsClient.on('inbounds', (payload) => {
+        window.wsClient.on('inbounds', async (payload) => {
           if (payload && Array.isArray(payload)) {
-            // Use setInbounds to properly convert to DBInbound objects with methods
+            await this.enrichAwgInbounds(payload);
             this.setInbounds(payload);
           }
         });

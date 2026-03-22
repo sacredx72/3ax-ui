@@ -206,183 +206,22 @@
             </a-card>
           </a-col>
 
-          <!-- Clients Card -->
-          <a-col :span="24">
-            <a-card hoverable>
-              <template #title>
-                <a-space direction="horizontal">
-                  <a-icon type="team"></a-icon>
-                  <span>Clients</span>
-                  <a-tag color="blue">[[ clients.length ]]</a-tag>
-                </a-space>
-              </template>
-              <template #extra>
-                <a-button type="primary" icon="plus" @click="openAddClient">
-                  Add Client
-                </a-button>
-              </template>
-
-              <a-table :columns="columns" :data-source="clients" row-key="id"
-                :pagination="clients.length > 10 ? { pageSize: 10 } : false"
-                :scroll="{ x: 800 }" size="middle">
-
-                <template slot="enable" slot-scope="text, record">
-                  <a-switch :checked="record.enable" size="small"
-                    @change="(checked) => toggleClient(record.id, checked)" />
-                </template>
-
-                <template slot="name" slot-scope="text, record">
-                  <span>[[ record.name ]]</span>
-                  <br v-if="record.comment">
-                  <small style="opacity:0.6" v-if="record.comment">[[ record.comment ]]</small>
-                </template>
-
-                <template slot="ipv4" slot-scope="text, record">
-                  <code>[[ record.ipv4Address ]]</code>
-                </template>
-
-                <template slot="ipv6" slot-scope="text, record">
-                  <code v-if="record.ipv6Address">[[ record.ipv6Address ]]</code>
-                  <span v-else style="opacity:0.4">—</span>
-                </template>
-
-                <template slot="traffic" slot-scope="text, record">
-                  <span>↑ [[ SizeFormatter.sizeFormat(record.upload) ]]</span>
-                  <br>
-                  <span>↓ [[ SizeFormatter.sizeFormat(record.download) ]]</span>
-                </template>
-
-                <template slot="actions" slot-scope="text, record">
-                  <a-space>
-                    <a-tooltip title="Download Config">
-                      <a-button size="small" icon="download" @click="downloadConfig(record)" />
-                    </a-tooltip>
-                    <a-tooltip title="Show QR Code">
-                      <a-button size="small" icon="qrcode" @click="showQrCode(record)" />
-                    </a-tooltip>
-                    <a-tooltip title="Show Config">
-                      <a-button size="small" icon="file-text" @click="showConfigText(record)" />
-                    </a-tooltip>
-                    <a-tooltip title="Reset Traffic">
-                      <a-button size="small" icon="reload" @click="resetTraffic(record.id)" />
-                    </a-tooltip>
-                    <a-popconfirm title="Delete this client?" @confirm="deleteClient(record.id)"
-                      ok-text="Yes" cancel-text="No">
-                      <a-button size="small" type="danger" icon="delete" />
-                    </a-popconfirm>
-                  </a-space>
-                </template>
-              </a-table>
-            </a-card>
-          </a-col>
+          <!-- Clients are managed via the Inbounds page -->
         </a-row>
       </a-spin>
     </a-layout-content>
   </a-layout>
 
-<!-- Add Client Modal -->
-<a-modal id="add-client-modal" v-model="addClientModal.visible" title="Add Client"
-  :class="themeSwitcher.currentTheme" @ok="submitAddClient" :confirm-loading="addClientModal.loading">
-  <a-form :label-col="{ span: 8 }" :wrapper-col="{ span: 16 }">
-    <a-form-item label="Name" required>
-      <a-input v-model="addClientModal.client.name" placeholder="Client name" />
-    </a-form-item>
-    <a-form-item label="Email (ID)" required>
-      <a-input v-model="addClientModal.client.email" placeholder="Unique identifier" />
-    </a-form-item>
-    <a-form-item label="Comment">
-      <a-input v-model="addClientModal.client.comment" placeholder="Optional comment" />
-    </a-form-item>
-    <a-form-item label="Traffic Limit (GB)">
-      <a-input-number v-model="addClientModal.totalGB" :min="0" style="width:100%"
-        placeholder="0 = unlimited" />
-    </a-form-item>
-    <a-form-item label="Expiry Date">
-      <a-date-picker v-model="addClientModal.expiryMoment" style="width:100%"
-        :disabled-date="(d) => d && d < moment().startOf('day')"
-        :dropdown-class-name="themeSwitcher.currentTheme" />
-    </a-form-item>
-    <a-form-item label="Allowed IPs (client)">
-      <a-input v-model="addClientModal.client.clientAllowedIPs"
-        placeholder="0.0.0.0/0, ::/0" />
-    </a-form-item>
-    <a-form-item label="Keepalive (sec)">
-      <a-input-number v-model="addClientModal.client.persistentKeepalive" :min="0" style="width:100%" />
-    </a-form-item>
-  </a-form>
-</a-modal>
-
-<!-- QR Code Modal -->
-<a-modal id="awg-qr-modal" v-model="qrModal.visible" :title="qrModal.title"
-  :class="themeSwitcher.currentTheme" :footer="null" width="450px">
-  <div style="text-align:center">
-    <canvas id="awg-qrcode" style="max-width:100%"></canvas>
-    <br>
-    <a-button icon="copy" @click="copyText(qrModal.config)" style="margin-top:8px">
-      Copy Config
-    </a-button>
-  </div>
-</a-modal>
-
-<!-- Config Text Modal -->
-<a-modal id="awg-config-modal" v-model="configModal.visible" :title="configModal.title"
-  :class="themeSwitcher.currentTheme" :footer="null" width="600px">
-  <pre :style="{ background: themeSwitcher.isDarkTheme ? '#1f1f1f' : '#f5f5f5', color: themeSwitcher.isDarkTheme ? 'rgba(255,255,255,0.85)' : 'inherit', padding: '16px', borderRadius: '4px', overflow: 'auto', fontSize: '13px' }">[[ configModal.config ]]</pre>
-  <div style="text-align:right;margin-top:8px">
-    <a-button icon="copy" @click="copyText(configModal.config)">Copy</a-button>
-    <a-button icon="download" type="primary" @click="downloadConfigText(configModal.title, configModal.config)" style="margin-left:8px">Download .conf</a-button>
-  </div>
-</a-modal>
 
 </a-layout>
 
 {{template "page/body_scripts" .}}
-<script src="{{ .base_path }}assets/qrcode/qrious2.min.js?{{ .cur_ver }}"></script>
 <script src="{{ .base_path }}assets/js/model/awg.js?{{ .cur_ver }}"></script>
 {{template "component/aSidebar" .}}
 {{template "component/aThemeSwitch" .}}
 {{template "component/aCustomStatistic" .}}
 
 <script>
-  const columns = [
-    {
-      title: '',
-      key: 'enable',
-      width: 50,
-      scopedSlots: { customRender: 'enable' },
-    },
-    {
-      title: 'Name',
-      key: 'name',
-      scopedSlots: { customRender: 'name' },
-    },
-    {
-      title: 'IPv4',
-      key: 'ipv4',
-      scopedSlots: { customRender: 'ipv4' },
-      responsive: ['md'],
-    },
-    {
-      title: 'IPv6',
-      key: 'ipv6',
-      scopedSlots: { customRender: 'ipv6' },
-      responsive: ['lg'],
-    },
-    {
-      title: 'Traffic',
-      key: 'traffic',
-      scopedSlots: { customRender: 'traffic' },
-      width: 140,
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      scopedSlots: { customRender: 'actions' },
-      width: 220,
-      align: 'center',
-    },
-  ];
-
   const app = new Vue({
     delimiters: ['[[', ']]'],
     el: '#app',
@@ -394,28 +233,10 @@
       toggling: false,
       activePanel: ['network'],
       server: new AwgServer(),
-      clients: [],
       status: {
         running: false,
         awgInstalled: false,
         awgVersion: 'unknown',
-      },
-      addClientModal: {
-        visible: false,
-        loading: false,
-        client: new AwgClient(),
-        totalGB: 0,
-        expiryMoment: null,
-      },
-      qrModal: {
-        visible: false,
-        title: '',
-        config: '',
-      },
-      configModal: {
-        visible: false,
-        title: '',
-        config: '',
       },
     },
     async created() {
@@ -426,7 +247,6 @@
         this.loading = true;
         await Promise.all([
           this.loadServer(),
-          this.loadClients(),
           this.loadStatus(),
         ]);
         this.loading = false;
@@ -436,12 +256,6 @@
         const msg = await HttpUtil.get('panel/api/awg/server');
         if (msg.success) {
           this.server = new AwgServer(msg.obj);
-        }
-      },
-      async loadClients() {
-        const msg = await HttpUtil.get('panel/api/awg/clients');
-        if (msg.success && msg.obj) {
-          this.clients = msg.obj.map(c => new AwgClient(c));
         }
       },
       async loadStatus() {
@@ -466,97 +280,6 @@
           this.server.enable = enable;
           await this.loadStatus();
         }
-      },
-
-      // --- Client methods ---
-      openAddClient() {
-        this.addClientModal.client = new AwgClient();
-        this.addClientModal.totalGB = 0;
-        this.addClientModal.expiryMoment = null;
-        this.addClientModal.visible = true;
-      },
-      async submitAddClient() {
-        const c = this.addClientModal.client;
-        if (!c.name || !c.email) {
-          this.$message.error('Name and Email are required');
-          return;
-        }
-        c.totalGB = (this.addClientModal.totalGB || 0) * 1024 * 1024 * 1024;
-        if (this.addClientModal.expiryMoment) {
-          c.expiryTime = this.addClientModal.expiryMoment.valueOf();
-        }
-        this.addClientModal.loading = true;
-        const msg = await HttpUtil.postJson('panel/api/awg/client/add', c);
-        this.addClientModal.loading = false;
-        if (msg.success) {
-          this.addClientModal.visible = false;
-          await this.loadClients();
-        }
-      },
-      async toggleClient(id, enable) {
-        await HttpUtil.postJson(`panel/api/awg/client/toggle/${id}`, { enable });
-        await this.loadClients();
-      },
-      async deleteClient(id) {
-        const msg = await HttpUtil.postJson(`panel/api/awg/client/del/${id}`);
-        if (msg.success) {
-          await this.loadClients();
-        }
-      },
-      async resetTraffic(id) {
-        const msg = await HttpUtil.postJson(`panel/api/awg/client/resetTraffic/${id}`);
-        if (msg.success) {
-          await this.loadClients();
-        }
-      },
-      async downloadConfig(record) {
-        const msg = await HttpUtil.get(`panel/api/awg/client/${record.id}/config`);
-        if (msg.success) {
-          const config = msg.obj;
-          const blob = new Blob([config], { type: 'text/plain' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = (record.name || 'awg-client') + '.conf';
-          a.click();
-          URL.revokeObjectURL(url);
-        }
-      },
-      async showQrCode(record) {
-        const msg = await HttpUtil.get(`panel/api/awg/client/${record.id}/config`);
-        if (msg.success) {
-          this.qrModal.config = msg.obj;
-          this.qrModal.title = record.name;
-          this.qrModal.visible = true;
-          this.$nextTick(() => {
-            new QRious({
-              element: document.querySelector('#awg-qrcode'),
-              size: 380,
-              value: msg.obj,
-              background: 'white',
-              foreground: 'black',
-              padding: 8,
-              level: 'L',
-            });
-          });
-        }
-      },
-      async showConfigText(record) {
-        const msg = await HttpUtil.get(`panel/api/awg/client/${record.id}/config`);
-        if (msg.success) {
-          this.configModal.config = msg.obj;
-          this.configModal.title = record.name;
-          this.configModal.visible = true;
-        }
-      },
-      downloadConfigText(name, config) {
-        const blob = new Blob([config], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = (name || 'awg-client') + '.conf';
-        a.click();
-        URL.revokeObjectURL(url);
       },
       copyText(text) {
         if (navigator.clipboard) {

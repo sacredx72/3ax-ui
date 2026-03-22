@@ -393,6 +393,29 @@
               <code>[[ link.link ]]</code>
             </tr-info-row>
           </template>
+          <template v-if="dbInbound.isAmneziawg && infoModal.awgConfig">
+            <a-divider>Client Configuration (Peer)</a-divider>
+            <tr-info-row class="tr-info-row">
+              <tr-info-title class="tr-info-title">
+                <a-tag color="blue">Config</a-tag>
+                <a-tooltip title='{{ i18n "copy" }}'>
+                  <a-button :style="{ minWidth: '24px' }" size="small"
+                    icon="snippets" @click="copy(infoModal.awgConfig)"></a-button>
+                </a-tooltip>
+                <a-tooltip title='{{ i18n "download" }}'>
+                  <a-button :style="{ minWidth: '24px' }" size="small"
+                    icon="download" @click="downloadAwgConfig()"></a-button>
+                </a-tooltip>
+              </tr-info-title>
+              <div v-html="infoModal.awgConfig.replaceAll('\n','<br />')"
+                :style="{ borderRadius: '0.5rem', padding: '0.5rem', fontFamily: 'monospace', fontSize: '12px' }"
+                class="client-table-odd-row">
+              </div>
+            </tr-info-row>
+            <div style="text-align:center; margin-top:16px">
+              <canvas id="infoAwgQrCode" style="max-width:300px"></canvas>
+            </div>
+          </template>
         </template>
         <template v-else>
           <template v-if="dbInbound.isSS && !inbound.isSSMultiUser">
@@ -644,6 +667,7 @@
     subJsonLink: '',
     clientIps: '',
     clientIpsArray: [],
+    awgConfig: '',
     show(dbInbound, index) {
       this.index = index;
       this.inbound = dbInbound.toInbound();
@@ -651,12 +675,13 @@
       this.clientSettings = this.inbound.clients ? this.inbound.clients[index] : null;
       this.isExpired = this.inbound.clients ? this.inbound.isExpiry(index) : this.dbInbound.isExpiry;
       this.clientStats = this.inbound.clients ? (this.dbInbound.clientStats.find(row => row.email === this.clientSettings.email) || null) : null;
+      this.awgConfig = '';
 
       if (
         [
-          Protocols.VMESS, 
+          Protocols.VMESS,
           Protocols.VLESS,
-          Protocols.TROJAN, 
+          Protocols.TROJAN,
           Protocols.SHADOWSOCKS
         ].includes(this.inbound.protocol)
       ) {
@@ -667,7 +692,12 @@
           })
         }
       }
-      if (this.inbound.protocol == Protocols.WIREGUARD) {
+      if (this.inbound.protocol == Protocols.AMNEZIAWG && this.clientSettings && this.clientSettings._awgId) {
+        HttpUtil.get(`panel/api/awg/client/${this.clientSettings._awgId}/config`).then(msg => {
+          if (msg.success) infoModal.awgConfig = msg.obj;
+        });
+        this.links = [];
+      } else if (this.inbound.protocol == Protocols.WIREGUARD) {
         this.links = this.inbound.genInboundLinks(dbInbound.remark).split('\r\n')
       } else {
         this.links = this.inbound.genAllLinks(this.dbInbound.remark, app.remarkModel, this.clientSettings);
@@ -799,6 +829,28 @@
           })
           .catch(() => {});
       },
+      downloadAwgConfig() {
+        const email = this.infoModal.clientSettings ? this.infoModal.clientSettings.email : 'awg-client';
+        FileManager.downloadTextFile(this.infoModal.awgConfig, `${email}.conf`);
+      },
+    },
+    updated() {
+      if (this.infoModal.visible && this.infoModal.awgConfig) {
+        this.$nextTick(() => {
+          const canvas = document.querySelector('#infoAwgQrCode');
+          if (canvas) {
+            new QRious({
+              element: canvas,
+              size: 300,
+              value: this.infoModal.awgConfig,
+              background: 'white',
+              foreground: 'black',
+              padding: 4,
+              level: 'L',
+            });
+          }
+        });
+      }
     },
   });
 </script>

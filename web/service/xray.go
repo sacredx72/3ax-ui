@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/mhsanaei/3x-ui/v2/database/model"
 	"github.com/mhsanaei/3x-ui/v2/logger"
 	"github.com/mhsanaei/3x-ui/v2/xray"
 
@@ -111,6 +112,10 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 	}
 	for _, inbound := range inbounds {
 		if !inbound.Enable {
+			continue
+		}
+		// Skip AmneziaWG — it's not an Xray protocol
+		if inbound.Protocol == model.AmneziaWG {
 			continue
 		}
 		// get settings clients

@@ -17,6 +17,7 @@
         </a-select>
     </a-form-item>
 
+    <template v-if="inbound.protocol !== Protocols.AMNEZIAWG">
     <a-form-item>
         <template slot="label">
             <a-tooltip>
@@ -34,7 +35,9 @@
         <a-input-number v-model.number="inbound.port" :min="1"
             :max="65535"></a-input-number>
     </a-form-item>
+    </template>
 
+    <template v-if="inbound.protocol !== Protocols.AMNEZIAWG">
     <a-form-item>
         <template slot="label">
             <a-tooltip>
@@ -105,6 +108,7 @@
             value="dbInbound._expiryTime" v-model="dbInbound._expiryTime">
         </a-persian-datepicker>
     </a-form-item>
+    </template>
 </a-form>
 
 <!-- vmess settings -->
@@ -152,6 +156,11 @@
     {{template "form/tun"}}
 </template>
 
+<!-- amneziawg -->
+<template v-if="inbound.protocol === Protocols.AMNEZIAWG">
+    {{template "form/amneziawg"}}
+</template>
+
 <!-- stream settings -->
 <template v-if="inbound.canEnableStream()">
     {{template "form/streamSettings"}}
@@ -164,7 +173,7 @@
 </template>
 
 <!-- sniffing -->
-<a-collapse>
+<a-collapse v-if="inbound.protocol !== Protocols.AMNEZIAWG">
     <a-collapse-panel header='Sniffing'>
         {{template "form/sniffing"}}
     </a-collapse-panel>

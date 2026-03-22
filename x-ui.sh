@@ -347,6 +347,10 @@ check_config() {
     if [ -z "$server_ip" ]; then
         server_ip=$(curl -s --max-time 3 https://4.ident.me)
     fi
+    local server_ipv6
+    server_ipv6=$(ip -6 addr show scope global 2>/dev/null \
+        | grep -oP '(?<=inet6 )[\da-f:]+(?=/[0-9]+ )' \
+        | grep -v '^fd' | head -1)
 
     if [[ -n "$existing_cert" ]]; then
         local domain=$(basename "$(dirname "$existing_cert")")
@@ -354,7 +358,12 @@ check_config() {
         if [[ "$domain" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
             echo -e "${green}Access URL: https://${domain}:${existing_port}${existing_webBasePath}${plain}"
         else
-            echo -e "${green}Access URL: https://${server_ip}:${existing_port}${existing_webBasePath}${plain}"
+            if [[ -n "$server_ipv6" ]]; then
+                echo -e "${green}Access URL IPv4: https://${server_ip}:${existing_port}${existing_webBasePath}${plain}"
+                echo -e "${green}Access URL IPv6: https://[${server_ipv6}]:${existing_port}${existing_webBasePath}${plain}"
+            else
+                echo -e "${green}Access URL: https://${server_ip}:${existing_port}${existing_webBasePath}${plain}"
+            fi
         fi
     else
         echo -e "${red}⚠ WARNING: No SSL certificate configured!${plain}"
@@ -373,7 +382,12 @@ check_config() {
                 start >/dev/null 2>&1
             fi
         else
-            echo -e "${yellow}Access URL: http://${server_ip}:${existing_port}${existing_webBasePath}${plain}"
+            if [[ -n "$server_ipv6" ]]; then
+                echo -e "${yellow}Access URL IPv4: http://${server_ip}:${existing_port}${existing_webBasePath}${plain}"
+                echo -e "${yellow}Access URL IPv6: http://[${server_ipv6}]:${existing_port}${existing_webBasePath}${plain}"
+            else
+                echo -e "${yellow}Access URL: http://${server_ip}:${existing_port}${existing_webBasePath}${plain}"
+            fi
             echo -e "${yellow}For security, please configure SSL certificate using option 19 (SSL Certificate Management)${plain}"
         fi
     fi

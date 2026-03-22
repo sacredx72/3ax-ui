@@ -8,6 +8,7 @@ const Protocols = {
     HTTP: 'http',
     WIREGUARD: 'wireguard',
     TUN: 'tun',
+    AMNEZIAWG: 'amneziawg',
 };
 
 const SSMethods = {
@@ -1201,6 +1202,7 @@ class Inbound extends XrayCommonClass {
             case Protocols.VLESS: return this.settings.vlesses;
             case Protocols.TROJAN: return this.settings.trojans;
             case Protocols.SHADOWSOCKS: return this.isSSMultiUser ? this.settings.shadowsockses : null;
+            case Protocols.AMNEZIAWG: return this.settings ? this.settings.clients : null;
             default: return null;
         }
     }
@@ -1827,6 +1829,7 @@ Inbound.Settings = class extends XrayCommonClass {
             case Protocols.HTTP: return new Inbound.HttpSettings(protocol);
             case Protocols.WIREGUARD: return new Inbound.WireguardSettings(protocol);
             case Protocols.TUN: return new Inbound.TunSettings(protocol);
+            case Protocols.AMNEZIAWG: return new Inbound.AmneziawgSettings(protocol);
             default: return null;
         }
     }
@@ -1842,6 +1845,7 @@ Inbound.Settings = class extends XrayCommonClass {
             case Protocols.HTTP: return Inbound.HttpSettings.fromJson(json);
             case Protocols.WIREGUARD: return Inbound.WireguardSettings.fromJson(json);
             case Protocols.TUN: return Inbound.TunSettings.fromJson(json);
+            case Protocols.AMNEZIAWG: return Inbound.AmneziawgSettings.fromJson(json);
             default: return null;
         }
     }
@@ -2705,6 +2709,95 @@ Inbound.TunSettings = class extends Inbound.Settings {
             name: this.name || 'xray0',
             mtu: this.mtu || 1500,
             userLevel: this.userLevel || 0,
+        };
+    }
+};
+
+// AmneziaWG settings — clients are stored in awg_clients table, not in inbound settings JSON
+Inbound.AmneziawgSettings = class extends Inbound.Settings {
+    constructor(protocol, clients = []) {
+        super(protocol);
+        this.clients = clients;
+    }
+
+    static fromJson(json = {}) {
+        const clients = (json.clients || []).map(c => Inbound.AmneziawgSettings.AwgPeer.fromJson(c));
+        return new Inbound.AmneziawgSettings(Protocols.AMNEZIAWG, clients);
+    }
+
+    toJson() {
+        return {
+            clients: this.clients.map(c => c.toJson()),
+        };
+    }
+};
+
+Inbound.AmneziawgSettings.AwgPeer = class extends XrayCommonClass {
+    constructor(
+        id = '',
+        email = RandomUtil.randomLowerAndNum(9),
+        enable = true,
+        comment = '',
+        totalGB = 0,
+        expiryTime = 0,
+        reset = 0,
+        subId = '',
+        tgId = 0,
+        limitIp = 0,
+    ) {
+        super();
+        this.id = id;
+        this.email = email;
+        this.enable = enable;
+        this.comment = comment;
+        this._totalGB = totalGB;
+        this.expiryTime = expiryTime;
+        this.reset = reset;
+        this.subId = subId;
+        this.tgId = tgId;
+        this.limitIp = limitIp;
+    }
+
+    get _expiryTime() {
+        if (this.expiryTime === 0) return null;
+        return moment(this.expiryTime);
+    }
+
+    set _expiryTime(t) {
+        if (t == null) {
+            this.expiryTime = 0;
+        } else {
+            this.expiryTime = t.valueOf();
+        }
+    }
+
+    static fromJson(json = {}) {
+        return new Inbound.AmneziawgSettings.AwgPeer(
+            json.id || json.email || '',
+            json.email || '',
+            json.enable !== undefined ? json.enable : true,
+            json.comment || '',
+            json.totalGB || 0,
+            json.expiryTime || 0,
+            json.reset || 0,
+            json.subId || '',
+            json.tgId || 0,
+            json.limitIp || 0,
+        );
+    }
+
+    toJson() {
+        return {
+            id: this.id || this.email,
+            email: this.email,
+            enable: this.enable,
+            comment: this.comment,
+            totalGB: this._totalGB,
+            expiryTime: this.expiryTime,
+            reset: this.reset,
+            subId: this.subId,
+            tgId: this.tgId,
+            limitIp: this.limitIp,
         };
     }
 };

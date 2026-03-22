@@ -1,0 +1,15 @@
+{{define "form/amneziawg"}}
+<a-form :colon="false" :label-col="{ md: {span:8} }" :wrapper-col="{ md: {span:14} }">
+  <a-alert type="info" show-icon :style="{ marginTop: '16px', marginBottom: '16px' }"
+    :class="themeSwitcher.currentTheme">
+    <template slot="message">
+      <span :style="{ color: themeSwitcher.isDarkTheme ? 'rgba(255,255,255,0.85)' : 'inherit' }">
+        AmneziaWG server settings are configured in the
+        <a :href="basePath + 'panel/awg'" target="_blank"
+           :style="{ color: themeSwitcher.isDarkTheme ? '#40a9ff' : '' }">AmneziaWG settings page</a>.
+        Use this inbound to manage AWG clients.
+      </span>
+    </template>
+  </a-alert>
+</a-form>
+{{end}}

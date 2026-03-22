@@ -214,6 +214,11 @@ func (s *InboundService) checkEmailExistForInbound(inbound *model.Inbound) (stri
 // then saves the inbound to the database and optionally adds it to the running Xray instance.
 // Returns the created inbound, whether Xray needs restart, and any error.
 func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, bool, error) {
+	// AmneziaWG inbounds are managed separately — just save the DB record
+	if inbound.Protocol == model.AmneziaWG {
+		return s.addAmneziawgInbound(inbound)
+	}
+
 	exist, err := s.checkPortExist(inbound.Listen, inbound.Port, 0)
 	if err != nil {
 		return inbound, false, err
@@ -317,6 +322,43 @@ func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, boo
 	}
 
 	return inbound, needRestart, err
+}
+
+// addAmneziawgInbound creates a minimal inbound record for AmneziaWG.
+// No xray config is generated — AWG is managed separately.
+func (s *InboundService) addAmneziawgInbound(inbound *model.Inbound) (*model.Inbound, bool, error) {
+	// Check if amneziawg inbound already exists (only one allowed)
+	db := database.GetDB()
+	var count int64
+	db.Model(&model.Inbound{}).Where("protocol = ?", model.AmneziaWG).Count(&count)
+	if count > 0 {
+		return inbound, false, common.NewError("AmneziaWG inbound already exists. Only one is allowed.")
+	}
+
+	// Set defaults for amneziawg
+	if inbound.Settings == "" {
+		inbound.Settings = `{"clients":[]}`
+	}
+	if inbound.Tag == "" {
+		inbound.Tag = "inbound-amneziawg"
+	}
+
+	var err error
+	tx := db.Begin()
+	defer func() {
+		if err == nil {
+			tx.Commit()
+		} else {
+			tx.Rollback()
+		}
+	}()
+
+	err = tx.Save(inbound).Error
+	if err != nil {
+		return inbound, false, err
+	}
+
+	return inbound, false, nil
 }
 
 // DelInbound deletes an inbound configuration by ID.
