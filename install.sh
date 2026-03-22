@@ -112,8 +112,7 @@ gen_random_string() {
 
 install_acme() {
     echo -e "${green}Installing acme.sh for SSL certificate management...${plain}"
-    cd ~ || return 1
-    curl -s https://get.acme.sh | sh >/dev/null 2>&1
+    (cd ~ && curl -s https://get.acme.sh | sh >/dev/null 2>&1)
     if [ $? -ne 0 ]; then
         echo -e "${red}Failed to install acme.sh${plain}"
         return 1
@@ -377,8 +376,7 @@ ssl_cert_issue() {
     # check for acme.sh first
     if ! command -v ~/.acme.sh/acme.sh &>/dev/null; then
         echo "acme.sh could not be found. Installing now..."
-        cd ~ || return 1
-        curl -s https://get.acme.sh | sh
+        (cd ~ && curl -s https://get.acme.sh | sh)
         if [ $? -ne 0 ]; then
             echo -e "${red}Failed to install acme.sh${plain}"
             return 1
@@ -940,8 +938,8 @@ config_awg_defaults() {
     local ext_iface_ipv4=""
     local ext_iface_ipv6=""
 
-    ext_iface_ipv4=$(ip route show default 2>/dev/null | awk '/default/ {print $5; exit}')
-    ext_iface_ipv6=$(ip -6 route show default 2>/dev/null | awk '/default/ {print $5; exit}')
+    ext_iface_ipv4=$(ip route show default 2>/dev/null | grep -oP 'dev \K\S+' | head -1)
+    ext_iface_ipv6=$(ip -6 route show default 2>/dev/null | grep -oP 'dev \K\S+' | head -1)
 
     # If no IPv6 default route, scan all interfaces for global IPv6
     if [[ -z "$ext_iface_ipv6" ]]; then
@@ -1040,7 +1038,7 @@ print(str(first) + '/' + str(net.prefixlen))
     # --- Detect IPv6 gateway ---
     local ipv6_gateway=""
     if [[ "$ipv6_enabled" -eq 1 ]]; then
-        ipv6_gateway=$(ip -6 route show default 2>/dev/null | awk '/default/ {print $3; exit}')
+        ipv6_gateway=$(ip -6 route show default 2>/dev/null | grep -oP 'via \K\S+' | head -1)
         if [[ -n "$ipv6_gateway" ]]; then
             echo -e "  IPv6 gateway:         ${green}${ipv6_gateway}${plain}"
         fi
@@ -1252,9 +1250,9 @@ install_x-ui() {
         # Install systemd service file
         service_installed=false
         
-        if [ -f "x-ui.service" ]; then
+        if [ -f "${xui_folder}/x-ui.service" ]; then
             echo -e "${green}Found x-ui.service in extracted files, installing...${plain}"
-            cp -f x-ui.service ${xui_service}/ >/dev/null 2>&1
+            cp -f "${xui_folder}/x-ui.service" ${xui_service}/ >/dev/null 2>&1
             if [[ $? -eq 0 ]]; then
                 service_installed=true
             fi
@@ -1263,27 +1261,27 @@ install_x-ui() {
         if [ "$service_installed" = false ]; then
             case "${release}" in
                 ubuntu | debian | armbian)
-                    if [ -f "x-ui.service.debian" ]; then
+                    if [ -f "${xui_folder}/x-ui.service.debian" ]; then
                         echo -e "${green}Found x-ui.service.debian in extracted files, installing...${plain}"
-                        cp -f x-ui.service.debian ${xui_service}/x-ui.service >/dev/null 2>&1
+                        cp -f "${xui_folder}/x-ui.service.debian" ${xui_service}/x-ui.service >/dev/null 2>&1
                         if [[ $? -eq 0 ]]; then
                             service_installed=true
                         fi
                     fi
                 ;;
                 arch | manjaro | parch)
-                    if [ -f "x-ui.service.arch" ]; then
+                    if [ -f "${xui_folder}/x-ui.service.arch" ]; then
                         echo -e "${green}Found x-ui.service.arch in extracted files, installing...${plain}"
-                        cp -f x-ui.service.arch ${xui_service}/x-ui.service >/dev/null 2>&1
+                        cp -f "${xui_folder}/x-ui.service.arch" ${xui_service}/x-ui.service >/dev/null 2>&1
                         if [[ $? -eq 0 ]]; then
                             service_installed=true
                         fi
                     fi
                 ;;
                 *)
-                    if [ -f "x-ui.service.rhel" ]; then
+                    if [ -f "${xui_folder}/x-ui.service.rhel" ]; then
                         echo -e "${green}Found x-ui.service.rhel in extracted files, installing...${plain}"
-                        cp -f x-ui.service.rhel ${xui_service}/x-ui.service >/dev/null 2>&1
+                        cp -f "${xui_folder}/x-ui.service.rhel" ${xui_service}/x-ui.service >/dev/null 2>&1
                         if [[ $? -eq 0 ]]; then
                             service_installed=true
                         fi
