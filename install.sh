@@ -790,6 +790,10 @@ install_amneziawg() {
         sysctl -p >/dev/null 2>&1 || true
     }
 
+    # Suppress interactive prompts (including Secure Boot MOK dialog)
+    export DEBIAN_FRONTEND=noninteractive
+    export DEBCONF_NONINTERACTIVE_SEEN=true
+
     # Try to install AmneziaWG kernel module + tools
     # Method 1: official AmneziaVPN apt repo (Debian/Ubuntu)
     if [[ "${release}" == "ubuntu" || "${release}" == "debian" || "${release}" == "armbian" ]]; then
