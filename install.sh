@@ -920,15 +920,26 @@ config_awg_defaults() {
     done
     echo -e "  Detected server IPv4: ${green}${server_ipv4:-not found}${plain}"
 
-    # --- Detect default network interface ---
+    # --- Detect default network interfaces ---
+    # IPv4 and IPv6 may be on different interfaces (e.g. eth0=IPv4, eth1=IPv6)
     local ext_iface=""
-    ext_iface=$(ip route show default 2>/dev/null | awk '/default/ {print $5; exit}')
-    if [[ -z "$ext_iface" ]]; then
-        ext_iface=$(ip -6 route show default 2>/dev/null | awk '/default/ {print $5; exit}')
+    local ext_iface_ipv4=""
+    local ext_iface_ipv6=""
+
+    ext_iface_ipv4=$(ip route show default 2>/dev/null | awk '/default/ {print $5; exit}')
+    ext_iface_ipv6=$(ip -6 route show default 2>/dev/null | awk '/default/ {print $5; exit}')
+
+    # If no IPv6 default route, scan all interfaces for global IPv6
+    if [[ -z "$ext_iface_ipv6" ]]; then
+        ext_iface_ipv6=$(ip -6 addr show scope global 2>/dev/null \
+            | grep -B2 'inet6' | grep -oP '^\d+:\s+\K[^:@]+' | head -1)
     fi
-    if [[ -z "$ext_iface" ]]; then
-        ext_iface="eth0"
-    fi
+
+    # Primary external interface: prefer the one with IPv6
+    ext_iface="${ext_iface_ipv6:-${ext_iface_ipv4:-eth0}}"
+
+    echo -e "  IPv4 interface:       ${green}${ext_iface_ipv4:-none}${plain}"
+    echo -e "  IPv6 interface:       ${green}${ext_iface_ipv6:-none}${plain}"
     echo -e "  External interface:   ${green}${ext_iface}${plain}"
 
     # --- Detect IPv6 ---
@@ -937,9 +948,22 @@ config_awg_defaults() {
     local ipv6_addr_on_iface=""
     local ipv6_enabled=0
 
-    # Get the global (non-link-local) IPv6 address on the external interface
-    ipv6_addr_on_iface=$(ip -6 addr show dev "$ext_iface" scope global 2>/dev/null \
+    # Get the global (non-link-local) IPv6 address — try IPv6 interface first, then all
+    local ipv6_search_iface="${ext_iface_ipv6:-$ext_iface}"
+    ipv6_addr_on_iface=$(ip -6 addr show dev "$ipv6_search_iface" scope global 2>/dev/null \
         | grep -oP 'inet6\s+\K[0-9a-f:]+/\d+' | head -1)
+    # If not found on specific iface, try any interface
+    if [[ -z "$ipv6_addr_on_iface" ]]; then
+        ipv6_addr_on_iface=$(ip -6 addr show scope global 2>/dev/null \
+            | grep -oP 'inet6\s+\K[0-9a-f:]+/\d+' | head -1)
+        # Update ext_iface_ipv6 to the interface where we found it
+        if [[ -n "$ipv6_addr_on_iface" ]]; then
+            ext_iface_ipv6=$(ip -6 addr show scope global 2>/dev/null \
+                | grep -B2 "$(echo "$ipv6_addr_on_iface" | cut -d/ -f1)" \
+                | grep -oP '^\d+:\s+\K[^:@]+' | head -1)
+            ext_iface="${ext_iface_ipv6:-$ext_iface}"
+        fi
+    fi
 
     if [[ -n "$ipv6_addr_on_iface" ]]; then
         ipv6_enabled=1
@@ -996,7 +1020,7 @@ print(str(first) + '/' + str(net.prefixlen))
             echo -e "  AWG IPv6 server addr: ${green}${awg_server_ipv6}${plain}"
         fi
     else
-        echo -e "  IPv6: ${yellow}not detected on ${ext_iface}${plain}"
+        echo -e "  IPv6: ${yellow}not detected on any interface${plain}"
     fi
 
     # --- Detect IPv6 gateway ---
@@ -1042,6 +1066,27 @@ print(str(first) + '/' + str(net.prefixlen))
         endpoint=$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo "")
     fi
 
+    # --- Build PostUp / PostDown rules ---
+    local post_up=""
+    local post_down=""
+    local ipv4_iface="${ext_iface_ipv4:-$ext_iface}"
+    local ipv6_iface="${ext_iface_ipv6:-$ext_iface}"
+
+    # IPv4 rules — NAT via IPv4 interface
+    post_up="iptables -t nat -A POSTROUTING -s 10.66.66.0/24 -o ${ipv4_iface} -j MASQUERADE; iptables -A FORWARD -i awg0 -j ACCEPT; iptables -A FORWARD -o awg0 -j ACCEPT; sysctl -w net.ipv4.ip_forward=1"
+    post_down="iptables -t nat -D POSTROUTING -s 10.66.66.0/24 -o ${ipv4_iface} -j MASQUERADE; iptables -D FORWARD -i awg0 -j ACCEPT; iptables -D FORWARD -o awg0 -j ACCEPT"
+
+    # IPv6 rules — FORWARD via IPv6 interface (no NAT66)
+    if [[ "$ipv6_enabled" -eq 1 ]]; then
+        post_up="${post_up}; ip6tables -A FORWARD -i awg0 -j ACCEPT; ip6tables -A FORWARD -o awg0 -j ACCEPT; sysctl -w net.ipv6.conf.all.forwarding=1"
+        post_down="${post_down}; ip6tables -D FORWARD -i awg0 -j ACCEPT; ip6tables -D FORWARD -o awg0 -j ACCEPT"
+        # If IPv6 is on a different interface, add FORWARD between them
+        if [[ "$ipv4_iface" != "$ipv6_iface" ]]; then
+            post_up="${post_up}; ip6tables -A FORWARD -i awg0 -o ${ipv6_iface} -j ACCEPT; ip6tables -A FORWARD -i ${ipv6_iface} -o awg0 -j ACCEPT"
+            post_down="${post_down}; ip6tables -D FORWARD -i awg0 -o ${ipv6_iface} -j ACCEPT; ip6tables -D FORWARD -i ${ipv6_iface} -o awg0 -j ACCEPT"
+        fi
+    fi
+
     # --- Write defaults to DB ---
     echo -e ""
     echo -e "${green}Writing AmneziaWG defaults to database...${plain}"
@@ -1062,7 +1107,7 @@ print(str(first) + '/' + str(net.prefixlen))
         '10.66.66.1/24', '10.66.66.0/24',
         ${ipv6_enabled}, '${awg_server_ipv6:-}', '${ipv6_prefix:-}', '${ipv6_gateway:-}',
         4, 50, 1000, 0, 0, 1, 2, 3, 4,
-        '1.1.1.1,2606:4700:4700::1111', '${ext_iface}', '', '', '${endpoint}',
+        '1.1.1.1,2606:4700:4700::1111', '${ext_iface}', '${post_up}', '${post_down}', '${endpoint}',
         ${now_ms}, ${now_ms}
     );" 2>/dev/null
 
