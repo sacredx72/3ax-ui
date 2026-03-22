@@ -760,6 +760,95 @@ config_after_install() {
     ${xui_folder}/x-ui migrate
 }
 
+install_amneziawg() {
+    echo -e "${green}Installing AmneziaWG...${plain}"
+
+    # Install ndppd for IPv6 NDP proxy (needed for native public IPv6 to clients)
+    install_ndppd() {
+        case "${release}" in
+            ubuntu | debian | armbian)
+                apt-get install -y -q ndppd 2>/dev/null || true
+            ;;
+            fedora | amzn | rhel | almalinux | rocky | ol | centos)
+                dnf install -y ndppd 2>/dev/null || yum install -y ndppd 2>/dev/null || true
+            ;;
+            arch | manjaro | parch)
+                pacman -Syu --noconfirm ndppd 2>/dev/null || true
+            ;;
+        esac
+    }
+
+    # Enable IPv6 forwarding persistently
+    enable_ipv6_forwarding() {
+        if ! grep -q "net.ipv6.conf.all.forwarding" /etc/sysctl.conf 2>/dev/null; then
+            echo "net.ipv6.conf.all.forwarding = 1" >> /etc/sysctl.conf
+        fi
+        if ! grep -q "net.ipv4.ip_forward" /etc/sysctl.conf 2>/dev/null; then
+            echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
+        fi
+        sysctl -p >/dev/null 2>&1 || true
+    }
+
+    # Try to install AmneziaWG kernel module + tools
+    # Method 1: official AmneziaVPN apt repo (Debian/Ubuntu)
+    if [[ "${release}" == "ubuntu" || "${release}" == "debian" || "${release}" == "armbian" ]]; then
+        if ! command -v awg &>/dev/null; then
+            echo -e "${yellow}Installing amneziawg-tools from AmneziaVPN repository...${plain}"
+            apt-get install -y -q software-properties-common gnupg 2>/dev/null || true
+            # Add AmneziaVPN PPA / apt repo
+            if [[ "${release}" == "ubuntu" ]]; then
+                add-apt-repository -y ppa:amneziavpn/ppa 2>/dev/null && \
+                apt-get update -q && \
+                apt-get install -y -q amneziawg amneziawg-tools && \
+                echo -e "${green}AmneziaWG installed successfully.${plain}" || \
+                echo -e "${yellow}AmneziaVPN PPA not available, trying DKMS build...${plain}"
+            fi
+            # Fallback: try wireguard-dkms approach with amneziawg source
+            if ! command -v awg &>/dev/null; then
+                apt-get install -y -q linux-headers-$(uname -r) dkms wireguard-tools 2>/dev/null || true
+                if apt-cache show amneziawg-dkms &>/dev/null 2>&1; then
+                    apt-get install -y -q amneziawg-dkms amneziawg-tools
+                fi
+            fi
+        else
+            echo -e "${green}AmneziaWG (awg) already installed.${plain}"
+        fi
+        install_ndppd
+    # Method 2: other distros — try to install wireguard as fallback
+    elif [[ "${release}" == "fedora" || "${release}" == "rhel" || "${release}" == "almalinux" || "${release}" == "rocky" || "${release}" == "ol" ]]; then
+        if ! command -v awg &>/dev/null; then
+            echo -e "${yellow}AmneziaWG not found. Installing WireGuard as fallback...${plain}"
+            dnf install -y wireguard-tools 2>/dev/null || yum install -y wireguard-tools 2>/dev/null || true
+            echo -e "${yellow}Note: For full AmneziaWG support install amneziawg-tools manually.${plain}"
+        fi
+        install_ndppd
+    elif [[ "${release}" == "arch" || "${release}" == "manjaro" || "${release}" == "parch" ]]; then
+        if ! command -v awg &>/dev/null; then
+            pacman -Syu --noconfirm wireguard-tools 2>/dev/null || true
+            # Try AUR amneziawg-dkms if yay/paru available
+            if command -v yay &>/dev/null; then
+                yay -S --noconfirm amneziawg-dkms amneziawg-tools 2>/dev/null || true
+            elif command -v paru &>/dev/null; then
+                paru -S --noconfirm amneziawg-dkms amneziawg-tools 2>/dev/null || true
+            fi
+        fi
+        install_ndppd
+    else
+        echo -e "${yellow}Unknown OS. Please install amneziawg-tools manually: https://github.com/amnezia-vpn/amneziawg-linux-kernel-module${plain}"
+    fi
+
+    # Final check
+    if command -v awg &>/dev/null; then
+        echo -e "${green}awg: $(awg --version 2>/dev/null || echo 'installed')${plain}"
+    else
+        echo -e "${yellow}Warning: 'awg' binary not found. AmneziaWG panel features will work but${plain}"
+        echo -e "${yellow}the tunnel will not start until you install amneziawg-tools manually.${plain}"
+        echo -e "${yellow}See: https://github.com/amnezia-vpn/amneziawg-linux-kernel-module${plain}"
+    fi
+
+    enable_ipv6_forwarding
+}
+
 install_x-ui() {
     cd ${xui_folder%/x-ui}/
     
@@ -961,4 +1050,5 @@ install_x-ui() {
 
 echo -e "${green}Running...${plain}"
 install_base
+install_amneziawg
 install_x-ui $1
