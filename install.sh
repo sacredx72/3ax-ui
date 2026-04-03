@@ -929,7 +929,15 @@ config_awg_defaults() {
         return
     fi
 
-    # Skip if AWG server already configured
+    # Check if awg_servers table exists (may not exist on original 3x-ui)
+    local table_exists=$(sqlite3 "$db_path" "SELECT name FROM sqlite_master WHERE type='table' AND name='awg_servers';" 2>/dev/null)
+    if [[ -z "$table_exists" ]]; then
+        echo -e "${yellow}AWG tables not found (new migration). They will be created on panel start.${plain}"
+        echo -e "${yellow}Skipping AWG auto-config — open the AmneziaWG page in the panel to configure.${plain}"
+        return
+    fi
+
+    # Skip if AWG server already configured (update scenario — do not overwrite)
     local existing=$(sqlite3 "$db_path" "SELECT COUNT(*) FROM awg_servers;" 2>/dev/null)
     if [[ "$existing" -gt 0 ]]; then
         echo -e "${green}AmneziaWG already configured, skipping.${plain}"
