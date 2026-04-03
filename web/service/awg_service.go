@@ -56,17 +56,18 @@ func (s *AwgService) SaveServer(server *model.AwgServer) error {
 }
 
 // ToggleServer enables or disables the AWG interface.
+// Only updates the "enable" column to avoid overwriting other settings.
 func (s *AwgService) ToggleServer(enable bool) error {
 	server, err := s.GetServer()
 	if err != nil {
 		return err
 	}
 
-	server.Enable = enable
 	db := database.GetDB()
-	if err := db.Save(server).Error; err != nil {
+	if err := db.Model(server).Update("enable", enable).Error; err != nil {
 		return err
 	}
+	server.Enable = enable
 
 	if enable {
 		return s.applyServerConfig(server)
@@ -254,11 +255,17 @@ func (s *AwgService) AddClient(client *model.AwgClient) error {
 		return err
 	}
 
-	// Apply to running server
-	if server.Enable {
-		if err := s.applyServerConfig(server); err != nil {
-			logger.Warning("Failed to apply AWG config after adding client:", err)
+	// Auto-enable server when first client is added
+	if !server.Enable {
+		server.Enable = true
+		if err := db.Save(server).Error; err != nil {
+			logger.Warning("Failed to auto-enable AWG server:", err)
 		}
+	}
+
+	// Apply config to running server
+	if err := s.applyServerConfig(server); err != nil {
+		logger.Warning("Failed to apply AWG config after adding client:", err)
 	}
 
 	return nil
