@@ -61,6 +61,9 @@ func (s *AwgService) SaveServer(server *model.AwgServer) error {
 		return err
 	}
 
+	// Sync listen port to the AWG inbound record so the inbounds page shows the real port
+	s.syncInboundPort(db, server.ListenPort)
+
 	if server.Enable {
 		return s.applyServerConfig(server)
 	}
@@ -687,6 +690,31 @@ func (s *AwgService) ResetAllClientTraffics() error {
 	return nil
 }
 
+// syncInboundPort updates the port field on the AWG inbound record to match the AWG listen port.
+func (s *AwgService) syncInboundPort(db *gorm.DB, port int) {
+	db.Model(&model.Inbound{}).Where("protocol = ?", model.AmneziaWG).Update("port", port)
+}
+
+// StartIfEnabled brings up the AWG interface if it was enabled before shutdown.
+// Called once during panel startup to restore AWG state after a reboot.
+func (s *AwgService) StartIfEnabled() {
+	server, err := s.GetServer()
+	if err != nil {
+		logger.Warning("AWG startup check failed:", err)
+		return
+	}
+	if !server.Enable {
+		return
+	}
+	if awg.IsInterfaceUp(server.InterfaceName) {
+		return
+	}
+	logger.Info("Restoring AmneziaWG interface after startup...")
+	if err := s.applyServerConfig(server); err != nil {
+		logger.Warning("Failed to restore AWG on startup:", err)
+	}
+}
+
 // applyServerConfig regenerates the config file and applies it.
 func (s *AwgService) applyServerConfig(server *model.AwgServer) error {
 	clients, err := s.GetClients()
@@ -706,12 +734,12 @@ func (s *AwgService) applyServerConfig(server *model.AwgServer) error {
 		if awg.IsNdppdInstalled() {
 			if err := awg.ApplyNdppdConfig(iface6, server.InterfaceName, server.IPv6Pool); err != nil {
 				logger.Warning("Failed to apply ndppd config:", err)
-				// Fallback to per-client NDP proxy
-				s.applyManualNDP(server, clients)
 			}
-		} else {
-			s.applyManualNDP(server, clients)
 		}
+		// Always sync manual NDP proxy entries: add for enabled, remove for disabled.
+		// This is needed even with ndppd because PostUp adds entries via `ip -6 neigh`
+		// and SyncConfig doesn't execute PostDown to clean them up.
+		s.applyManualNDP(server, clients)
 	}
 
 	// Sync or restart interface
@@ -732,13 +760,20 @@ func (s *AwgService) ipv6Iface(server *model.AwgServer) string {
 	return awg.DetectDefaultInterface()
 }
 
-// applyManualNDP adds per-client NDP proxy entries.
+// applyManualNDP syncs NDP proxy entries: adds for enabled clients, removes for disabled ones.
 func (s *AwgService) applyManualNDP(server *model.AwgServer, clients []model.AwgClient) {
 	iface6 := s.ipv6Iface(server)
 	for _, c := range clients {
-		if c.Enable && c.IPv6Address != "" {
+		if c.IPv6Address == "" {
+			continue
+		}
+		if c.Enable {
 			if err := awg.AddProxyNDP(c.IPv6Address, iface6); err != nil {
 				logger.Warning("Failed to add NDP proxy for", c.IPv6Address, ":", err)
+			}
+		} else {
+			if err := awg.RemoveProxyNDP(c.IPv6Address, iface6); err != nil {
+				logger.Warning("Failed to remove NDP proxy for", c.IPv6Address, ":", err)
 			}
 		}
 	}

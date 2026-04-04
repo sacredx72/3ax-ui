@@ -769,6 +769,11 @@
         for (const inbound of inbounds) {
           if (inbound.protocol !== Protocols.AMNEZIAWG) continue;
           try {
+            // Fetch AWG server to get the real listen port
+            const srvMsg = await HttpUtil.get('/panel/api/awg/server');
+            if (srvMsg.success && srvMsg.obj && srvMsg.obj.listenPort) {
+              inbound.port = srvMsg.obj.listenPort;
+            }
             const awgMsg = await HttpUtil.get('/panel/api/awg/clients');
             if (awgMsg.success && awgMsg.obj) {
               // Map AWG clients to standard client format for settings

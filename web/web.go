@@ -444,6 +444,12 @@ func (s *Server) Start() (err error) {
 
 	s.startTask()
 
+	// Restore AmneziaWG interface if it was enabled before shutdown/reboot
+	go func() {
+		var awgService service.AwgService
+		awgService.StartIfEnabled()
+	}()
+
 	isTgbotenabled, err := s.settingService.GetTgbotEnabled()
 	if (err == nil) && (isTgbotenabled) {
 		tgBot := s.tgbotService.NewTgbot()
