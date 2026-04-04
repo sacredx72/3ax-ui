@@ -1101,26 +1101,13 @@ print(str(first) + '/' + str(net.prefixlen))
         endpoint=$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo "")
     fi
 
-    # --- Build PostUp / PostDown rules ---
-    local post_up=""
-    local post_down=""
     local ipv4_iface="${ext_iface_ipv4:-$ext_iface}"
     local ipv6_iface="${ext_iface_ipv6:-$ext_iface}"
 
-    # IPv4 rules — NAT via IPv4 interface
-    post_up="iptables -t nat -A POSTROUTING -s 10.66.66.0/24 -o ${ipv4_iface} -j MASQUERADE; iptables -A FORWARD -i awg0 -j ACCEPT; iptables -A FORWARD -o awg0 -j ACCEPT; sysctl -w net.ipv4.ip_forward=1"
-    post_down="iptables -t nat -D POSTROUTING -s 10.66.66.0/24 -o ${ipv4_iface} -j MASQUERADE; iptables -D FORWARD -i awg0 -j ACCEPT; iptables -D FORWARD -o awg0 -j ACCEPT"
-
-    # IPv6 rules — FORWARD via IPv6 interface (no NAT66)
-    if [[ "$ipv6_enabled" -eq 1 ]]; then
-        post_up="${post_up}; ip6tables -A FORWARD -i awg0 -j ACCEPT; ip6tables -A FORWARD -o awg0 -j ACCEPT; sysctl -w net.ipv6.conf.all.forwarding=1"
-        post_down="${post_down}; ip6tables -D FORWARD -i awg0 -j ACCEPT; ip6tables -D FORWARD -o awg0 -j ACCEPT"
-        # If IPv6 is on a different interface, add FORWARD between them
-        if [[ "$ipv4_iface" != "$ipv6_iface" ]]; then
-            post_up="${post_up}; ip6tables -A FORWARD -i awg0 -o ${ipv6_iface} -j ACCEPT; ip6tables -A FORWARD -i ${ipv6_iface} -o awg0 -j ACCEPT"
-            post_down="${post_down}; ip6tables -D FORWARD -i awg0 -o ${ipv6_iface} -j ACCEPT; ip6tables -D FORWARD -i ${ipv6_iface} -o awg0 -j ACCEPT"
-        fi
-    fi
+    # PostUp/PostDown are left empty in the DB — the Go code auto-generates
+    # them dynamically (including NDP proxy entries per client) each time
+    # the server config is applied. This ensures rules are always correct
+    # and include NDP proxy for every active client.
 
     # --- Write defaults to DB ---
     echo -e ""
@@ -1147,7 +1134,7 @@ print(str(first) + '/' + str(net.prefixlen))
         ${ipv6_enabled}, '${awg_server_ipv6:-}', '${ipv6_prefix:-}', '${ipv6_gateway:-}',
         4, 50, 1000, 0, 0, 1, 2, 3, 4,
         '1.1.1.1,2606:4700:4700::1111', '${ipv4_iface}', '${ipv6_iface}',
-        '${post_up}', '${post_down}', '${endpoint}',
+        '', '', '${endpoint}',
         ${now_ms}, ${now_ms}
     );" 2>/dev/null
 
