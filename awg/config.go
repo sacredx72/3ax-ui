@@ -71,11 +71,11 @@ func GenerateServerConfig(server *model.AwgServer, clients []model.AwgClient) st
 	// PostUp / PostDown
 	postUp := server.PostUp
 	if postUp == "" {
-		postUp = GenerateDefaultPostUp(server)
+		postUp = GenerateDefaultPostUp(server, clients)
 	}
 	postDown := server.PostDown
 	if postDown == "" {
-		postDown = GenerateDefaultPostDown(server)
+		postDown = GenerateDefaultPostDown(server, clients)
 	}
 	if postUp != "" {
 		b.WriteString(fmt.Sprintf("PostUp = %s\n", postUp))
@@ -174,8 +174,8 @@ func ipv6Iface(server *model.AwgServer) string {
 	return DetectDefaultInterface()
 }
 
-// GenerateDefaultPostUp creates default iptables rules for the server.
-func GenerateDefaultPostUp(server *model.AwgServer) string {
+// GenerateDefaultPostUp creates default iptables + NDP proxy rules for the server.
+func GenerateDefaultPostUp(server *model.AwgServer, clients []model.AwgClient) string {
 	iface := server.ExternalInterface
 	if iface == "" {
 		iface = DetectDefaultInterface()
@@ -193,13 +193,22 @@ func GenerateDefaultPostUp(server *model.AwgServer) string {
 
 	if server.IPv6Enabled {
 		iface6 := ipv6Iface(server)
-		// No NAT66 — direct routing with forwarding
 		parts = append(parts,
 			fmt.Sprintf("ip6tables -A FORWARD -i %s -j ACCEPT", name),
 			fmt.Sprintf("ip6tables -A FORWARD -o %s -j ACCEPT", name),
 			fmt.Sprintf("ip6tables -A FORWARD -i %s -o %s -j ACCEPT", iface6, name),
 			"sysctl -w net.ipv6.conf.all.forwarding=1",
+			fmt.Sprintf("sysctl -w net.ipv6.conf.%s.proxy_ndp=1", iface6),
 		)
+		// Add NDP proxy entries for each enabled client with an IPv6 address
+		for _, c := range clients {
+			if c.Enable && c.IPv6Address != "" {
+				ip := stripMask(c.IPv6Address)
+				parts = append(parts,
+					fmt.Sprintf("ip -6 neigh add proxy %s dev %s", ip, iface6),
+				)
+			}
+		}
 	}
 	parts = append(parts, "sysctl -w net.ipv4.ip_forward=1")
 
@@ -207,7 +216,7 @@ func GenerateDefaultPostUp(server *model.AwgServer) string {
 }
 
 // GenerateDefaultPostDown creates cleanup rules matching PostUp.
-func GenerateDefaultPostDown(server *model.AwgServer) string {
+func GenerateDefaultPostDown(server *model.AwgServer, clients []model.AwgClient) string {
 	iface := server.ExternalInterface
 	if iface == "" {
 		iface = DetectDefaultInterface()
@@ -230,6 +239,15 @@ func GenerateDefaultPostDown(server *model.AwgServer) string {
 			fmt.Sprintf("ip6tables -D FORWARD -o %s -j ACCEPT", name),
 			fmt.Sprintf("ip6tables -D FORWARD -i %s -o %s -j ACCEPT", iface6, name),
 		)
+		// Remove NDP proxy entries for each enabled client
+		for _, c := range clients {
+			if c.Enable && c.IPv6Address != "" {
+				ip := stripMask(c.IPv6Address)
+				parts = append(parts,
+					fmt.Sprintf("ip -6 neigh del proxy %s dev %s", ip, iface6),
+				)
+			}
+		}
 	}
 
 	return strings.Join(parts, "; ")
