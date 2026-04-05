@@ -20,6 +20,8 @@ node_modules/
 
 # Ignore compiled binaries
 main
+/3ax-ui
+/3x-ui
 
 # Ignore script and executable files
 /release.sh
