@@ -1,5 +1,4 @@
 class AllSetting {
-
     constructor(data) {
         this.webListen = "";
         this.webDomain = "";
@@ -37,7 +36,7 @@ class AllSetting {
         this.subRoutingRules = "";
         this.subListen = "";
         this.subPort = 2096;
-        this.subPath = "/sub/";
+        this.subPath = "";
         this.subJsonPath = "/json/";
         this.subDomain = "";
         this.externalTrafficInformEnable = false;
@@ -79,7 +78,7 @@ class AllSetting {
         this.ldapDefaultLimitIP = 0;
 
         if (data == null) {
-            return
+            return;
         }
         ObjectUtil.cloneProps(this, data);
     }

@@ -62,7 +62,7 @@ var defaultValueMap = map[string]string{
 	"subRoutingRules":             "",
 	"subListen":                   "",
 	"subPort":                     "2096",
-	"subPath":                     "/sub/",
+	"subPath":                     fmt.Sprintf("/sub-%s/", random.Seq(12)),
 	"subDomain":                   "",
 	"subCertFile":                 "",
 	"subKeyFile":                  "",
@@ -505,7 +505,14 @@ func (s *SettingService) GetSubPort() (int, error) {
 }
 
 func (s *SettingService) GetSubPath() (string, error) {
-	return s.getString("subPath")
+	subPath, err := s.getString("subPath")
+	if subPath == defaultValueMap["subPath"] {
+		err := s.saveSetting("subPath", subPath)
+		if err != nil {
+			logger.Warning("save subPath failed:", err)
+		}
+	}
+	return subPath, err
 }
 
 func (s *SettingService) GetSubJsonPath() (string, error) {
