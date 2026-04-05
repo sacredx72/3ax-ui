@@ -1167,6 +1167,23 @@ install_x-ui() {
 
     # Download resources
     if [ $# == 0 ]; then
+        tag_version=$(curl -Ls "https://api.github.com/repos/coinman-dev/3ax-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        if [[ ! -n "$tag_version" ]]; then
+            echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
+            tag_version=$(curl -4 -Ls "https://api.github.com/repos/coinman-dev/3ax-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+            if [[ ! -n "$tag_version" ]]; then
+                echo -e "${red}Failed to fetch x-ui version, it may be due to GitHub API restrictions, please try it later${plain}"
+                exit 1
+            fi
+        fi
+        echo -e "Got x-ui latest stable version: ${tag_version}, beginning the installation..."
+        curl -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/coinman-dev/3ax-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
+        if [[ $? -ne 0 ]]; then
+            echo -e "${red}Downloading x-ui failed, please be sure that your server can access GitHub ${plain}"
+            exit 1
+        fi
+    elif [[ "$1" == "--beta" || "$1" == "--pre" ]]; then
+        echo -e "${yellow}Installing latest pre-release version...${plain}"
         tag_version=$(curl -Ls "https://api.github.com/repos/coinman-dev/3ax-ui/releases" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' | head -1)
         if [[ ! -n "$tag_version" ]]; then
             echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
@@ -1176,7 +1193,7 @@ install_x-ui() {
                 exit 1
             fi
         fi
-        echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
+        echo -e "Got x-ui latest pre-release version: ${tag_version}, beginning the installation..."
         curl -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/coinman-dev/3ax-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
         if [[ $? -ne 0 ]]; then
             echo -e "${red}Downloading x-ui failed, please be sure that your server can access GitHub ${plain}"
