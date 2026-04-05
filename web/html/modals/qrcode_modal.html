@@ -20,19 +20,19 @@
       </a-popover>
     </a-space>
   </template>
-  <tr-qr-modal class="qr-modal">
+  <tr-qr-modal class="qr-modal" :style="{ flexDirection: 'row', flexWrap: 'wrap', maxWidth: 'none' }">
     <template v-if="app.subSettings?.enable && qrModal.subId">
-      <tr-qr-box class="qr-box">
+      <tr-qr-box class="qr-box" :style="{ width: (app.qrCodeSize || 450) + 'px' }">
         <a-tag color="purple" class="qr-tag"><span>{{ i18n "pages.settings.subSettings"}}</span></a-tag>
-        <tr-qr-bg class="qr-bg-sub">
+        <tr-qr-bg class="qr-bg-sub" :style="{ width: (app.qrCodeSize || 450) + 'px', height: (app.qrCodeSize || 450) + 'px' }">
           <tr-qr-bg-inner class="qr-bg-sub-inner">
             <canvas @click="copy(genSubLink(qrModal.client.subId))" id="qrCode-sub" class="qr-cv"></canvas>
           </tr-qr-bg-inner>
         </tr-qr-bg>
       </tr-qr-box>
-      <tr-qr-box class="qr-box" v-if="app.subSettings.subJsonEnable">
+      <tr-qr-box class="qr-box" v-if="app.subSettings.subJsonEnable" :style="{ width: (app.qrCodeSize || 450) + 'px' }">
         <a-tag color="purple" class="qr-tag"><span>{{ i18n "pages.settings.subSettings"}} Json</span></a-tag>
-        <tr-qr-bg class="qr-bg-sub">
+        <tr-qr-bg class="qr-bg-sub" :style="{ width: (app.qrCodeSize || 450) + 'px', height: (app.qrCodeSize || 450) + 'px' }">
           <tr-qr-bg-inner class="qr-bg-sub-inner">
             <canvas @click="copy(genSubJsonLink(qrModal.client.subId))" id="qrCode-subJson" class="qr-cv"></canvas>
           </tr-qr-bg-inner>
@@ -40,9 +40,9 @@
       </tr-qr-box>
     </template>
     <template v-for="(row, index) in qrModal.qrcodes">
-      <tr-qr-box class="qr-box">
+      <tr-qr-box class="qr-box" :style="{ width: (app.qrCodeSize || 450) + 'px' }">
         <a-tag color="green" class="qr-tag"><span>[[ row.remark ]]</span></a-tag>
-        <tr-qr-bg class="qr-bg">
+        <tr-qr-bg class="qr-bg" :style="{ width: (app.qrCodeSize || 450) + 'px', height: (app.qrCodeSize || 450) + 'px' }">
           <canvas @click="copy(row.link)" :id="'qrCode-'+index" class="qr-cv"></canvas>
         </tr-qr-bg>
       </tr-qr-box>
@@ -235,9 +235,10 @@
           })
       },
       setQrCode(elementId, content) {
+        const size = (app && app.qrCodeSize) ? app.qrCodeSize : 450;
         new QRious({
           element: document.querySelector('#' + elementId),
-          size: 600,
+          size: size,
           value: content,
           background: 'white',
           backgroundAlpha: 0,

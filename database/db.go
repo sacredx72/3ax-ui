@@ -12,6 +12,7 @@ import (
 	"path"
 	"slices"
 
+	"github.com/google/uuid"
 	"github.com/mhsanaei/3x-ui/v2/config"
 	"github.com/mhsanaei/3x-ui/v2/database/model"
 	"github.com/mhsanaei/3x-ui/v2/util/crypto"
@@ -149,6 +150,9 @@ func InitDB(dbPath string) error {
 		return err
 	}
 
+	// Populate UUIDs for existing AWG clients that don't have one
+	migrateAwgClientUUIDs()
+
 	isUsersEmpty, err := isTableEmpty("users")
 	if err != nil {
 		return err
@@ -158,6 +162,16 @@ func InitDB(dbPath string) error {
 		return err
 	}
 	return runSeeders(isUsersEmpty)
+}
+
+// migrateAwgClientUUIDs populates UUIDs for existing AWG clients that have empty UUIDs.
+func migrateAwgClientUUIDs() {
+	var clients []model.AwgClient
+	db.Where("uuid = '' OR uuid IS NULL").Find(&clients)
+	for _, client := range clients {
+		client.UUID = uuid.New().String()
+		db.Model(&client).Update("uuid", client.UUID)
+	}
 }
 
 // CloseDB closes the database connection if it exists.

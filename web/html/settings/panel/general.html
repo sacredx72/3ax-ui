@@ -64,6 +64,17 @@
             </template>
         </a-setting-list-item>
         <a-setting-list-item paddings="small">
+            <template #title>{{ i18n "pages.settings.qrCodeSize" }}</template>
+            <template #description>{{ i18n "pages.settings.qrCodeSizeDesc" }}</template>
+            <template #control>
+                <a-select :value="allSetting.qrCodeSize || 450" @change="allSetting.qrCodeSize = $event" :dropdown-class-name="themeSwitcher.currentTheme" :style="{ width: '100%' }">
+                    <a-select-option :value="300">300×300</a-select-option>
+                    <a-select-option :value="450">450×450</a-select-option>
+                    <a-select-option :value="600">600×600</a-select-option>
+                </a-select>
+            </template>
+        </a-setting-list-item>
+        <a-setting-list-item paddings="small">
             <template #title>{{ i18n "pages.settings.language"}}</template>
             <template #control>
                 <a-select ref="selectLang" v-model="lang" @change="LanguageManager.setLanguage(lang)"

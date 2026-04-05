@@ -31,6 +31,7 @@ type AllSetting struct {
 
 	// UI settings
 	PageSize    int    `json:"pageSize" form:"pageSize"`       // Number of items per page in lists
+	QrCodeSize  int    `json:"qrCodeSize" form:"qrCodeSize"`   // QR code display size in pixels
 	ExpireDiff  int    `json:"expireDiff" form:"expireDiff"`   // Expiration warning threshold in days
 	TrafficDiff int    `json:"trafficDiff" form:"trafficDiff"` // Traffic warning threshold percentage
 	RemarkModel string `json:"remarkModel" form:"remarkModel"` // Remark model pattern for inbounds

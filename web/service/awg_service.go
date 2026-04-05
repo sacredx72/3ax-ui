@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/mhsanaei/3x-ui/v2/awg"
@@ -283,6 +284,19 @@ func (s *AwgService) AddClient(client *model.AwgClient) error {
 		return err
 	}
 
+	// Generate UUID if not provided
+	if client.UUID == "" {
+		client.UUID = uuid.New().String()
+	}
+
+	// Check UUID uniqueness
+	db := database.GetDB()
+	var count int64
+	db.Model(&model.AwgClient{}).Where("uuid = ?", client.UUID).Count(&count)
+	if count > 0 {
+		return fmt.Errorf("AWG client with this ID already exists")
+	}
+
 	// Generate keys
 	priv, pub, err := awg.GenerateKeyPair()
 	if err != nil {
@@ -340,7 +354,6 @@ func (s *AwgService) AddClient(client *model.AwgClient) error {
 	client.ServerId = server.Id
 	client.CreatedAt = time.Now().UnixMilli()
 
-	db := database.GetDB()
 	if err := db.Create(client).Error; err != nil {
 		return err
 	}

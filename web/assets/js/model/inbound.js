@@ -2734,7 +2734,7 @@ Inbound.AmneziawgSettings = class extends Inbound.Settings {
 
 Inbound.AmneziawgSettings.AwgPeer = class extends XrayCommonClass {
     constructor(
-        id = '',
+        id = RandomUtil.randomUUID(),
         email = RandomUtil.randomLowerAndNum(9),
         enable = true,
         comment = '',
@@ -2779,7 +2779,7 @@ Inbound.AmneziawgSettings.AwgPeer = class extends XrayCommonClass {
 
     static fromJson(json = {}) {
         return new Inbound.AmneziawgSettings.AwgPeer(
-            json.id || json.email || '',
+            json.id || RandomUtil.randomUUID(),
             json.email || '',
             json.enable !== undefined ? json.enable : true,
             json.comment || '',
@@ -2797,7 +2797,7 @@ Inbound.AmneziawgSettings.AwgPeer = class extends XrayCommonClass {
 
     toJson() {
         return {
-            id: this.id || this.email,
+            id: this.id,
             email: this.email,
             enable: this.enable,
             comment: this.comment,

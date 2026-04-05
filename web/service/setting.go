@@ -35,6 +35,7 @@ var defaultValueMap = map[string]string{
 	"webBasePath":                 "/",
 	"sessionMaxAge":               "360",
 	"pageSize":                    "25",
+	"qrCodeSize":                  "450",
 	"expireDiff":                  "0",
 	"trafficDiff":                 "0",
 	"remarkModel":                 "-ieo",
@@ -547,6 +548,10 @@ func (s *SettingService) GetPageSize() (int, error) {
 	return s.getInt("pageSize")
 }
 
+func (s *SettingService) GetQrCodeSize() (int, error) {
+	return s.getInt("qrCodeSize")
+}
+
 func (s *SettingService) GetSubURI() (string, error) {
 	return s.getString("subURI")
 }
@@ -746,6 +751,7 @@ func (s *SettingService) GetDefaultSettings(host string) (any, error) {
 		"expireDiff":    func() (any, error) { return s.GetExpireDiff() },
 		"trafficDiff":   func() (any, error) { return s.GetTrafficDiff() },
 		"pageSize":      func() (any, error) { return s.GetPageSize() },
+		"qrCodeSize":    func() (any, error) { return s.GetQrCodeSize() },
 		"defaultCert":   func() (any, error) { return s.GetCertFile() },
 		"defaultKey":    func() (any, error) { return s.GetKeyFile() },
 		"tgBotEnable":   func() (any, error) { return s.GetTgbotEnabled() },

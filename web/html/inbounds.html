@@ -741,6 +741,7 @@
       showAlert: false,
       ipLimitEnable: false,
       pageSize: 0,
+      qrCodeSize: 450,
     },
     methods: {
       loading(spinning = true) {
@@ -778,10 +779,10 @@
             if (awgMsg.success && awgMsg.obj) {
               // Map AWG clients to standard client format for settings
               const clients = awgMsg.obj.map(c => ({
-                id: c.email,
+                id: c.uuid || '',
                 email: c.email,
                 enable: c.enable,
-                comment: c.comment || c.name || '',
+                comment: c.comment || '',
                 totalGB: c.totalGB || 0,
                 expiryTime: c.expiryTime || 0,
                 reset: c.reset || 0,
@@ -853,6 +854,7 @@
             subJsonEnable: subJsonEnable,
           };
           this.pageSize = pageSize;
+          this.qrCodeSize = qrCodeSize || 450;
           this.remarkModel = remarkModel;
           this.datepicker = datepicker;
           this.ipLimitEnable = ipLimitEnable;
@@ -1263,8 +1265,9 @@
         let success = true;
         for (const client of clientList) {
           const data = {
+            uuid: client.id || '',
             email: client.email,
-            name: client.comment || client.email,
+            name: client.email,
             comment: client.comment || '',
             enable: client.enable,
             totalGB: client._totalGB || 0,
@@ -1283,17 +1286,18 @@
           modal.loading(false);
         }
       },
-      async updateAwgClient(client, clientEmail) {
+      async updateAwgClient(client, clientId) {
         clientModal.loading();
-        // Find AWG client ID by email from the AWG API
+        // Find AWG client by UUID or email from the AWG API
         const clientsMsg = await HttpUtil.get('/panel/api/awg/clients');
         if (!clientsMsg.success) { clientModal.loading(false); return; }
-        const awgClient = clientsMsg.obj.find(c => c.email === clientEmail);
+        const awgClient = clientsMsg.obj.find(c => c.uuid === clientId || c.email === clientId);
         if (!awgClient) { clientModal.loading(false); return; }
         const data = {
           ...awgClient,
+          uuid: client.id || awgClient.uuid || '',
           email: client.email,
-          name: client.comment || client.email,
+          name: client.email,
           comment: client.comment || '',
           enable: client.enable,
           totalGB: client._totalGB || 0,

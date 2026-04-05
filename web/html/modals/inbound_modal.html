@@ -1,7 +1,8 @@
 {{define "modals/inboundModal"}}
 <a-modal id="inbound-modal" v-model="inModal.visible" :title="inModal.title" :dialog-style="{ top: '20px' }"
     @ok="inModal.ok" :confirm-loading="inModal.confirmLoading" :closable="true" :mask-closable="false"
-    :class="themeSwitcher.currentTheme" :ok-text="inModal.okText" cancel-text='{{ i18n "close" }}'>
+    :class="themeSwitcher.currentTheme" :ok-text="inModal.okText" cancel-text='{{ i18n "close" }}'
+    :ok-button-props="{ props: { disabled: !inModal.isEdit && inbound.protocol === Protocols.AMNEZIAWG && app.dbInbounds && app.dbInbounds.some(db => db.protocol === Protocols.AMNEZIAWG) } }">
     {{template "form/inbound"}}
 </a-modal>
 <script>

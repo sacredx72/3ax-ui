@@ -62,6 +62,7 @@ type AwgClient struct {
 	Id       int `json:"id" gorm:"primaryKey;autoIncrement"`
 	ServerId int `json:"serverId" gorm:"index"`
 
+	UUID    string `json:"uuid" gorm:"index"`
 	Name    string `json:"name"`
 	Email   string `json:"email" gorm:"uniqueIndex"`
 	Enable  bool   `json:"enable" gorm:"default:true"`
