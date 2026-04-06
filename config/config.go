@@ -13,10 +13,17 @@ import (
 )
 
 //go:embed version
-var version string
+var embeddedVersion string
 
 //go:embed name
 var name string
+
+// version is overridden at build time via:
+//
+//	go build -ldflags "-X 'github.com/coinman-dev/3ax-ui/v2/config.version=v1.2.3'"
+//
+// Falls back to the embedded version file when empty (e.g. go run).
+var version string
 
 // LogLevel represents the logging level for the application.
 type LogLevel string
@@ -31,8 +38,22 @@ const (
 )
 
 // GetVersion returns the version string of the 3AX-UI application.
+// If the version was injected via ldflags it is returned as-is;
+// otherwise the embedded config/version file is used.
 func GetVersion() string {
-	return strings.TrimSpace(version)
+	if v := strings.TrimSpace(version); v != "" {
+		return v
+	}
+	return strings.TrimSpace(embeddedVersion)
+}
+
+// IsBeta reports whether the current build is a pre-release
+// (version string contains "beta", "alpha", or "rc").
+func IsBeta() bool {
+	v := strings.ToLower(GetVersion())
+	return strings.Contains(v, "beta") ||
+		strings.Contains(v, "alpha") ||
+		strings.Contains(v, "rc")
 }
 
 // GetName returns the name of the 3AX-UI application.

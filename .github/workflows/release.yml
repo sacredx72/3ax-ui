@@ -1,12 +1,13 @@
-name: Release 3X-UI
+name: Release 3AX-UI
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - '**'
+      - main
+      - dev
     tags:
-      - "v*.*.*"
+      - "v*"
     paths:
       - '**.js'
       - '**.css'
@@ -111,7 +112,9 @@ jobs:
           export CC=$(realpath "$(find "$TOOLCHAIN_DIR/bin" -name '*-gcc.br_real' -type f -executable | head -n1)")
           [ -z "$CC" ] && { echo "No gcc.br_real found in $TOOLCHAIN_DIR/bin" >&2; exit 1; }
           cd -
-          go build -ldflags "-w -s -linkmode external -extldflags '-static'" -o xui-release -v main.go
+          BUILD_VERSION="${{ github.ref_name }}"
+          [ -z "$BUILD_VERSION" ] && BUILD_VERSION=$(cat config/version)
+          go build -ldflags "-w -s -linkmode external -extldflags '-static' -X 'github.com/coinman-dev/3ax-ui/v2/config.version=${BUILD_VERSION}'" -o xui-release -v main.go
           file xui-release
           ldd xui-release || echo "Static binary confirmed"
           
@@ -185,7 +188,7 @@ jobs:
           file: x-ui-linux-${{ matrix.platform }}.tar.gz
           asset_name: x-ui-linux-${{ matrix.platform }}.tar.gz
           overwrite: true
-          prerelease: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
   # =================================
   #  Windows Build
@@ -234,7 +237,9 @@ jobs:
           go version
           gcc --version
 
-          go build -ldflags "-w -s" -o xui-release.exe -v main.go
+          BUILD_VERSION="${{ github.ref_name }}"
+          if [ -z "$BUILD_VERSION" ]; then BUILD_VERSION=$(cat config/version); fi
+          go build -ldflags "-w -s -X 'github.com/coinman-dev/3ax-ui/v2/config.version=${BUILD_VERSION}'" -o xui-release.exe -v main.go
 
       - name: Copy and download resources
         shell: pwsh
@@ -282,4 +287,4 @@ jobs:
           file: x-ui-windows-amd64.zip
           asset_name: x-ui-windows-amd64.zip
           overwrite: true
-          prerelease: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
