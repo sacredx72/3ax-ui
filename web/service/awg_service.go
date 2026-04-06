@@ -289,6 +289,11 @@ func (s *AwgService) AddClient(client *model.AwgClient) error {
 		client.UUID = uuid.New().String()
 	}
 
+	// Validate UUID format
+	if _, err := uuid.Parse(client.UUID); err != nil {
+		return fmt.Errorf("invalid UUID format for AWG client ID: %s", client.UUID)
+	}
+
 	// Check UUID uniqueness
 	db := database.GetDB()
 	var count int64
@@ -376,6 +381,13 @@ func (s *AwgService) AddClient(client *model.AwgClient) error {
 
 // UpdateClient updates an existing client.
 func (s *AwgService) UpdateClient(client *model.AwgClient) error {
+	// Ensure UUID is always set and valid
+	if client.UUID == "" {
+		client.UUID = uuid.New().String()
+	} else if _, err := uuid.Parse(client.UUID); err != nil {
+		return fmt.Errorf("invalid UUID format for AWG client ID: %s", client.UUID)
+	}
+
 	db := database.GetDB()
 	client.UpdatedAt = time.Now().UnixMilli()
 	if err := db.Save(client).Error; err != nil {

@@ -97,7 +97,7 @@
             ID <a-icon @click="inbound.settings.clients[0].id = RandomUtil.randomUUID()" type="sync"></a-icon>
           </a-tooltip>
         </template>
-        <a-input v-model.trim="inbound.settings.clients[0].id"></a-input>
+        <a-input :value="inbound.settings.clients[0].id" read-only></a-input>
       </a-form-item>
       <a-form-item label='{{ i18n "comment" }}'>
         <a-input v-model.trim="inbound.settings.clients[0].comment"></a-input>
