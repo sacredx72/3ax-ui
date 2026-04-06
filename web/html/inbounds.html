@@ -724,6 +724,7 @@
       defaultKey: '',
       clientCount: [],
       onlineClients: [],
+      awgOnlineClients: [],
       lastOnlineMap: {},
       isRefreshEnabled: localStorage.getItem("isRefreshEnabled") === "true" ? true : false,
       refreshing: false,
@@ -805,18 +806,18 @@
                 total: c.totalGB || 0,
                 expiryTime: c.expiryTime || 0,
               }));
-              // Add AWG online clients and last online to global maps
+              // Add AWG online clients to a separate map (not mixed with Xray onlineClients)
               const now = Date.now();
+              const awgOnline = [];
               for (const c of awgMsg.obj) {
                 if (c.lastOnline && (now - c.lastOnline) < 180000) {
-                  if (!this.onlineClients.includes(c.email)) {
-                    this.onlineClients.push(c.email);
-                  }
+                  awgOnline.push(c.email);
                 }
                 if (c.lastOnline > 0) {
                   this.lastOnlineMap[c.email] = c.lastOnline;
                 }
               }
+              this.awgOnlineClients = awgOnline;
             }
           } catch (e) {
             console.error('Failed to fetch AWG clients:', e);
@@ -899,7 +900,7 @@
               }
               if (client.enable) {
                 active.push(client.email);
-                if (this.isClientOnline(client.email)) online.push(client.email);
+                if (this.isClientOnline(client.email, dbInbound.protocol)) online.push(client.email);
               } else {
                 deactive.push(client.email);
               }
@@ -1606,7 +1607,10 @@
         const expired = hasExpiry && expiryTime <= now;
         return expired || exhausted;
       },
-      isClientOnline(email) {
+      isClientOnline(email, protocol) {
+        if (protocol === 'amneziawg') {
+          return this.awgOnlineClients.includes(email);
+        }
         return this.onlineClients.includes(email);
       },
       getLastOnline(email) {
