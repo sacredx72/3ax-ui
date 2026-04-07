@@ -837,7 +837,8 @@ update_x-ui() {
         chmod +x bin/xray-linux-arm >/dev/null 2>&1
     fi
     
-    chmod +x x-ui bin/xray-linux-$(arch) >/dev/null 2>&1
+    chmod +x x-ui >/dev/null 2>&1
+    [ -f bin/xray-linux-$(arch) ] && chmod +x bin/xray-linux-$(arch) >/dev/null 2>&1
     
     echo -e "${green}Downloading and installing x-ui.sh script...${plain}"
     ${curl_bin} -fLRo /usr/bin/x-ui https://raw.githubusercontent.com/coinman-dev/3ax-ui/main/x-ui.sh >/dev/null 2>&1

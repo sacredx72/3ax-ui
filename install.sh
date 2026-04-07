@@ -1460,14 +1460,15 @@ install_x-ui() {
 
     cd x-ui
     chmod +x x-ui
-    chmod +x x-ui.sh
+    [ -f x-ui.sh ] && chmod +x x-ui.sh
 
     # Check the system's architecture and rename the file accordingly
     if [[ $(arch) == "armv5" || $(arch) == "armv6" || $(arch) == "armv7" ]]; then
-        mv bin/xray-linux-$(arch) bin/xray-linux-arm
-        chmod +x bin/xray-linux-arm
+        [ -f bin/xray-linux-$(arch) ] && mv bin/xray-linux-$(arch) bin/xray-linux-arm
+        [ -f bin/xray-linux-arm ] && chmod +x bin/xray-linux-arm
     fi
-    chmod +x x-ui bin/xray-linux-$(arch)
+    chmod +x x-ui
+    [ -f bin/xray-linux-$(arch) ] && chmod +x bin/xray-linux-$(arch)
 
     # Update x-ui cli and se set permission
     mv -f /usr/bin/x-ui-temp /usr/bin/x-ui
