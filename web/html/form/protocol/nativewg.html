@@ -1,10 +1,56 @@
 {{define "form/nativewg"}}
 <a-form :colon="false" :label-col="{ md: {span:8} }" :wrapper-col="{ md: {span:14} }">
-  <template v-if="isEdit || (inbound.settings && inbound.settings.clients && inbound.settings.clients.length > 0)">
+  <template v-if="!isEdit && app.dbInbounds && app.dbInbounds.some(db => db.protocol === Protocols.NATIVEWG)">
+    <a-form-item label='{{ i18n "pages.inbounds.periodicTrafficResetTitle" }}'>
+      <a-select disabled value="never" :dropdown-class-name="themeSwitcher.currentTheme">
+        <a-select-option value="never">{{ i18n "pages.inbounds.periodicTrafficReset.never" }}</a-select-option>
+      </a-select>
+    </a-form-item>
+    <a-alert type="info" show-icon
+      :style="{ marginTop: '16px', marginBottom: '16px', background: themeSwitcher.isDarkTheme ? 'rgba(22, 104, 220, 0.15)' : '', border: themeSwitcher.isDarkTheme ? '1px solid rgba(22, 104, 220, 0.3)' : '' }"
+      :class="themeSwitcher.currentTheme">
+      <template slot="message">
+        <span :style="{ color: themeSwitcher.isDarkTheme ? 'rgba(255,255,255,0.85)' : 'inherit' }">
+          WireGuard Native server settings are configured in the
+          <a :href="basePath + 'panel/wg'" target="_blank"
+             :style="{ color: themeSwitcher.isDarkTheme ? '#40a9ff' : '' }">WG Settings page</a>.
+          Use this inbound to manage WireGuard Native clients.
+        </span>
+      </template>
+    </a-alert>
+    <a-divider>Peer 1</a-divider>
+    <a-form-item label='{{ i18n "pages.inbounds.email" }}'>
+      <a-input disabled></a-input>
+    </a-form-item>
+    <a-form-item label="ID">
+      <a-input disabled></a-input>
+    </a-form-item>
+    <a-form-item label='{{ i18n "comment" }}'>
+      <a-input disabled></a-input>
+    </a-form-item>
+    <a-form-item label='{{ i18n "pages.inbounds.totalFlow" }}'>
+      <a-input-number disabled :min="0" :value="0"></a-input-number>
+    </a-form-item>
+    <a-form-item label='{{ i18n "pages.inbounds.expireDate" }}'>
+      <a-date-picker disabled></a-date-picker>
+    </a-form-item>
+    <a-alert type="warning" show-icon
+      :style="{ marginTop: '16px', background: themeSwitcher.isDarkTheme ? 'rgba(250, 173, 20, 0.15)' : '', border: themeSwitcher.isDarkTheme ? '1px solid rgba(250, 173, 20, 0.3)' : '' }"
+      :class="themeSwitcher.currentTheme">
+      <template slot="message">
+        <span :style="{ color: themeSwitcher.isDarkTheme ? 'rgba(255,255,255,0.85)' : 'inherit' }">
+          {{ i18n "pages.wg.duplicateWarning" }}
+        </span>
+      </template>
+    </a-alert>
+  </template>
+  <template v-else>
     <a-form-item>
       <template slot="label">
         <a-tooltip>
-          <template slot="title"><span>{{ i18n "pages.inbounds.lastReset" }}: [[ dbInbound.lastTrafficResetTime && dbInbound.lastTrafficResetTime > 0 ? IntlUtil.formatDate(dbInbound.lastTrafficResetTime) : '-' ]]</span></template>
+          <template slot="title">
+            <span>{{ i18n "pages.inbounds.lastReset" }}: [[ dbInbound.lastTrafficResetTime && dbInbound.lastTrafficResetTime > 0 ? IntlUtil.formatDate(dbInbound.lastTrafficResetTime) : '-' ]]</span>
+          </template>
           {{ i18n "pages.inbounds.periodicTrafficResetTitle" }}
           <a-icon type="question-circle"></a-icon>
         </a-tooltip>
@@ -33,7 +79,9 @@
       <a-form-item>
         <template slot="label">
           <a-tooltip>
-            <template slot="title"><span>{{ i18n "pages.inbounds.emailDesc" }}</span></template>
+            <template slot="title">
+              <span>{{ i18n "pages.inbounds.emailDesc" }}</span>
+            </template>
             {{ i18n "pages.inbounds.email" }}
             <a-icon type="sync" @click="inbound.settings.clients[0].email = RandomUtil.randomLowerAndNum(9)"></a-icon>
           </a-tooltip>
@@ -43,7 +91,9 @@
       <a-form-item>
         <template slot="label">
           <a-tooltip>
-            <template slot="title"><span>{{ i18n "reset" }}</span></template>
+            <template slot="title">
+              <span>{{ i18n "reset" }}</span>
+            </template>
             ID <a-icon @click="inbound.settings.clients[0].id = RandomUtil.randomUUID()" type="sync"></a-icon>
           </a-tooltip>
         </template>
@@ -55,7 +105,9 @@
       <a-form-item>
         <template slot="label">
           <a-tooltip>
-            <template slot="title">0 <span>{{ i18n "pages.inbounds.meansNoLimit" }}</span></template>
+            <template slot="title">
+              0 <span>{{ i18n "pages.inbounds.meansNoLimit" }}</span>
+            </template>
             {{ i18n "pages.inbounds.totalFlow" }}
             <a-icon type="question-circle"></a-icon>
           </a-tooltip>
@@ -96,20 +148,6 @@
         <a-input-number v-model.number="inbound.settings.clients[0].reset" :min="0"></a-input-number>
       </a-form-item>
     </template>
-  </template>
-  <template v-else>
-    <a-alert type="info" show-icon
-      :style="{ marginTop: '16px', marginBottom: '16px', background: themeSwitcher.isDarkTheme ? 'rgba(22, 104, 220, 0.15)' : '', border: themeSwitcher.isDarkTheme ? '1px solid rgba(22, 104, 220, 0.3)' : '' }"
-      :class="themeSwitcher.currentTheme">
-      <template slot="message">
-        <span :style="{ color: themeSwitcher.isDarkTheme ? 'rgba(255,255,255,0.85)' : 'inherit' }">
-          WireGuard Native server settings are configured in the
-          <a :href="basePath + 'panel/wg'" target="_blank"
-             :style="{ color: themeSwitcher.isDarkTheme ? '#40a9ff' : '' }">WG Settings page</a>.
-          Use this inbound to manage WireGuard Native clients.
-        </span>
-      </template>
-    </a-alert>
   </template>
 </a-form>
 {{end}}
