@@ -1,4 +1,19 @@
 {{define "modals/inboundInfoModal"}}
+<style>
+  #inbound-info-modal .info-wrap-tag {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.4;
+    height: auto;
+  }
+  #inbound-info-modal .info-wrap-tag.info-no-break {
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+</style>
 <a-modal id="inbound-info-modal" v-model="infoModal.visible"
   title='{{ i18n "pages.inbounds.details"}}' :closable="true"
   :mask-closable="true" :footer="null" width="600px"
@@ -16,7 +31,7 @@
           <td>{{ i18n "pages.inbounds.address" }}</td>
           <td>
             <a-tooltip :title="[[ dbInbound.address ]]">
-              <a-tag class="info-large-tag">[[ dbInbound.address ]]</a-tag>
+              <a-tag class="info-large-tag info-wrap-tag info-no-break">[[ dbInbound.address ]]</a-tag>
             </a-tooltip>
           </td>
         </tr>
@@ -44,7 +59,7 @@
               <td>{{ i18n "host" }}</td>
               <td v-if="inbound.host">
                 <a-tooltip :title="[[ inbound.host ]]">
-                  <a-tag class="info-large-tag">[[ inbound.host ]]</a-tag>
+                  <a-tag class="info-large-tag info-wrap-tag">[[ inbound.host ]]</a-tag>
                 </a-tooltip>
               </td>
               <td v-else>
@@ -56,7 +71,7 @@
             <td>{{ i18n "path" }}</td>
             <td v-if="inbound.path">
               <a-tooltip :title="[[ inbound.path ]]">
-                <a-tag class="info-large-tag">[[ inbound.path ]]</a-tag>
+                <a-tag class="info-large-tag info-wrap-tag">[[ inbound.path ]]</a-tag>
               </a-tooltip>
               <td v-else>
                 <a-tag color="orange">{{ i18n "none" }}</a-tag>
@@ -76,7 +91,7 @@
               <td>grpc serviceName</td>
               <td>
                 <a-tooltip :title="[[ inbound.serviceName ]]">
-                  <a-tag class="info-large-tag">[[ inbound.serviceName
+                  <a-tag class="info-large-tag info-wrap-tag">[[ inbound.serviceName
                     ]]</a-tag>
                 </a-tooltip>
                 <tr>
@@ -129,7 +144,7 @@
             <td>{{ i18n "password" }}</td>
             <td>
               <a-tooltip :title="[[ inbound.settings.password  ]]">
-                <a-tag class="info-large-tag">[[ inbound.settings.password
+                <a-tag class="info-large-tag info-wrap-tag">[[ inbound.settings.password
                   ]]</a-tag>
               </a-tooltip>
             </td>
@@ -179,7 +194,7 @@
               <td>{{ i18n "password" }}</td>
               <td>
                 <a-tooltip :title="[[ infoModal.clientSettings.password  ]]">
-                  <a-tag class="info-large-tag">[[
+                  <a-tag class="info-large-tag info-wrap-tag">[[
                     infoModal.clientSettings.password ]]</a-tag>
                 </a-tooltip>
               </td>
@@ -243,7 +258,7 @@
               <td>{{ i18n "comment" }}</td>
               <td>
                 <a-tooltip :title="[[ infoModal.clientSettings.comment  ]]">
-                  <a-tag class="info-large-tag">[[
+                  <a-tag class="info-large-tag info-wrap-tag">[[
                     infoModal.clientSettings.comment ]]</a-tag>
                 </a-tooltip>
               </td>
