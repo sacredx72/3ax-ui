@@ -136,6 +136,8 @@ bash <(curl -Ls https://raw.githubusercontent.com/coinman-dev/3ax-ui/master/inst
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/coinman-dev/3ax-ui/master/update.sh)
+
+bash <(curl -Ls https://raw.githubusercontent.com/coinman-dev/3ax-ui/master/update.sh) --beta
 ```
 
 ---
