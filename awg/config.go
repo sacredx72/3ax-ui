@@ -67,7 +67,38 @@ func GenerateServerConfig(server *model.AwgServer, clients []model.AwgClient) st
 	b.WriteString(fmt.Sprintf("H2 = %d\n", server.H2))
 	b.WriteString(fmt.Sprintf("H3 = %d\n", server.H3))
 	b.WriteString(fmt.Sprintf("H4 = %d\n", server.H4))
+    // После существующих параметров обфускации (после H4):
 
+	// === AmneziaWG 2.0 параметры ===
+	
+	// S3, S4
+	if server.S3 > 0 {
+	    b.WriteString(fmt.Sprintf("S3 = %d\n", server.S3))
+	}
+	if server.S4 > 0 {
+	    b.WriteString(fmt.Sprintf("S4 = %d\n", server.S4))
+	}
+	
+	// Диапазоны заголовков
+	if h1 := formatHeaderRange(server.H1Min, server.H1Max); h1 != "" {
+	    b.WriteString(fmt.Sprintf("H1 = %s\n", h1))
+	}
+	if h2 := formatHeaderRange(server.H2Min, server.H2Max); h2 != "" {
+	    b.WriteString(fmt.Sprintf("H2 = %s\n", h2))
+	}
+	if h3 := formatHeaderRange(server.H3Min, server.H3Max); h3 != "" {
+	    b.WriteString(fmt.Sprintf("H3 = %s\n", h3))
+	}
+	if h4 := formatHeaderRange(server.H4Min, server.H4Max); h4 != "" {
+	    b.WriteString(fmt.Sprintf("H4 = %s\n", h4))
+	}
+	
+	// CPS сигнатуры (только если заданы)
+	formatCPS(&b, "I1", server.I1)
+	formatCPS(&b, "I2", server.I2)
+	formatCPS(&b, "I3", server.I3)
+	formatCPS(&b, "I4", server.I4)
+	formatCPS(&b, "I5", server.I5)
 	// PostUp / PostDown
 	postUp := server.PostUp
 	if postUp == "" {
