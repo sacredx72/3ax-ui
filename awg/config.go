@@ -249,6 +249,24 @@ func GenerateDefaultPostDown(server *model.AwgServer, clients []model.AwgClient)
 			}
 		}
 	}
+func formatHeaderRange(min, max uint32) string {
+    if min == 0 && max == 0 {
+        return "" // не добавлять параметр
+    }
+    if min == max {
+        return fmt.Sprintf("%d", min)
+    }
+    if min > 0 && max > min {
+        return fmt.Sprintf("%d-%d", min, max)
+    }
+    return fmt.Sprintf("%d", min) // fallback
+}
 
+// formatCPS добавляет параметр только если значение не пустое
+func formatCPS(b *strings.Builder, name, value string) {
+    if value != "" {
+        b.WriteString(fmt.Sprintf("%s = %s\n", name, value))
+    }
+}
 	return strings.Join(parts, "; ")
 }
