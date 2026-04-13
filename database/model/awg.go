@@ -34,24 +34,30 @@ type AwgServer struct {
 	H3   int `json:"h3" gorm:"default:3"`
 	H4   int `json:"h4" gorm:"default:4"`
 	
-    // AmneziaWG 2.0 параметры
-    S3     int    `json:"s3"`     // padding cookie: 0-64
-    S4     int    `json:"s4"`     // padding data: 0-32
-    H1Min  uint32 `json:"h1_min"` // диапазон заголовков
-    H1Max  uint32 `json:"h1_max"`
-    H2Min  uint32 `json:"h2_min"`
-    H2Max  uint32 `json:"h2_max"`
-    H3Min  uint32 `json:"h3_min"`
-    H3Max  uint32 `json:"h3_max"`
-    H4Min  uint32 `json:"h4_min"`
-    H4Max  uint32 `json:"h4_max"`
+    // === AmneziaWG 2.0: Новые параметры ===
     
-    // CPS сигнатуры I1-I5
-    I1     string `json:"i1" gorm:"type:text"`
-    I2     string `json:"i2" gorm:"type:text"`
-    I3     string `json:"i3" gorm:"type:text"`
-    I4     string `json:"i4" gorm:"type:text"`
-    I5     string `json:"i5" gorm:"type:text"`
+    // S3, S4: padding для Cookie и Data пакетов
+    S3 int `json:"s3" gorm:"default:0"`    // 0-64 байта
+    S4 int `json:"s4" gorm:"default:0"`    // 0-32 байта
+    
+    // Диапазоны для заголовков (формат "min-max" в конфиге)
+    H1Min uint32 `json:"h1_min" gorm:"default:0"`
+    H1Max uint32 `json:"h1_max" gorm:"default:0"`
+    H2Min uint32 `json:"h2_min" gorm:"default:0"`
+    H2Max uint32 `json:"h2_max" gorm:"default:0"`
+    H3Min uint32 `json:"h3_min" gorm:"default:0"`
+    H3Max uint32 `json:"h3_max" gorm:"default:0"`
+    H4Min uint32 `json:"h4_min" gorm:"default:0"`
+    H4Max uint32 `json:"h4_max" gorm:"default:0"`
+    
+    // I1-I5: CPS entropy packets (Custom Protocol Signature)
+    // Хранятся как текст, т.к. содержат сложный синтаксис тегов
+    I1 string `json:"i1" gorm:"type:text;default:''"`
+    I2 string `json:"i2" gorm:"type:text;default:''"`
+    I3 string `json:"i3" gorm:"type:text;default:''"`
+    I4 string `json:"i4" gorm:"type:text;default:''"`
+    I5 string `json:"i5" gorm:"type:text;default:''"`
+	
 	// DNS pushed to clients
 	DNS string `json:"dns" gorm:"default:'1.1.1.1,2606:4700:4700::1111'"`
 
